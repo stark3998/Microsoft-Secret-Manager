@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    env_file: .env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # Cosmos DB Emulator for local development (activate with --profile dev)
+  cosmosdb-emulator:
+    image: mcr.microsoft.com/cosmosdb/linux/azure-cosmos-emulator:latest
+    ports:
+      - "8081:8081"
+      - "10250:10250"
+      - "10251:10251"
+      - "10252:10252"
+      - "10253:10253"
+      - "10254:10254"
+    environment:
+      - AZURE_COSMOS_EMULATOR_PARTITION_COUNT=5
+      - AZURE_COSMOS_EMULATOR_ENABLE_DATA_PERSISTENCE=true
+    profiles:
+      - dev
