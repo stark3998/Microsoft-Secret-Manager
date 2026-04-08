@@ -16,6 +16,7 @@ import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import BusinessIcon from '@mui/icons-material/Business';
 import SecurityIcon from '@mui/icons-material/Security';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
+import WebhookIcon from '@mui/icons-material/Webhook';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useAuth } from '../../auth/useAuth';
 import { ROUTES } from '../../utils/constants';
@@ -29,6 +30,7 @@ const navItems = [
   { label: 'Enterprise Apps', path: ROUTES.ENTERPRISE_APPS, icon: <BusinessIcon /> },
   { label: 'Certificates', path: ROUTES.CERTIFICATES, icon: <SecurityIcon /> },
   { label: 'SAML Rotation', path: ROUTES.SAML_ROTATION, icon: <AutorenewIcon /> },
+  { label: 'Event Grid', path: ROUTES.EVENTGRID_CONFIG, icon: <WebhookIcon /> },
 ];
 
 export function Sidebar() {

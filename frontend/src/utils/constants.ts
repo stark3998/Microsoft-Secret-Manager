@@ -5,6 +5,7 @@ export const ROUTES = {
   ENTERPRISE_APPS: '/enterprise-apps',
   CERTIFICATES: '/certificates',
   SAML_ROTATION: '/saml-rotation',
+  EVENTGRID_CONFIG: '/eventgrid-config',
   SETTINGS: '/settings',
 } as const;
 

@@ -12,6 +12,7 @@ import { EnterpriseAppsPage } from './pages/EnterpriseAppsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CertificatesPage } from './pages/CertificatesPage';
 import { SamlRotationPage } from './pages/SamlRotationPage';
+import { EventGridConfigPage } from './pages/EventGridConfigPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const queryClient = new QueryClient({
@@ -63,6 +64,14 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRole="Admin">
                         <SamlRotationPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/eventgrid-config"
+                    element={
+                      <ProtectedRoute requiredRole="Admin">
+                        <EventGridConfigPage />
                       </ProtectedRoute>
                     }
                   />
