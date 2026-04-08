@@ -41,5 +41,8 @@ htmlcov/
 .pytest_cache/
 coverage/
 
+# Local data store
+data/
+
 # Cosmos DB emulator certs
 cosmosdb-emulator.crt

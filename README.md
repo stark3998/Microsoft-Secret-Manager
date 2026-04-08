@@ -15,16 +15,19 @@ A centralized Azure secrets, keys, and certificate lifecycle management platform
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Quick Setup](#quick-setup)
+  - [Setup Wizard (First-Time Configuration)](#setup-wizard-first-time-configuration)
   - [Environment Configuration](#environment-configuration)
   - [Running Locally](#running-locally)
   - [Running with Docker](#running-with-docker)
 - [Deployment to Azure](#deployment-to-azure)
 - [API Reference](#api-reference)
 - [Feature Deep Dives](#feature-deep-dives)
+  - [Setup Wizard and Dual-Mode Storage](#setup-wizard-and-dual-mode-storage)
   - [Automated Secret Scanning](#automated-secret-scanning)
   - [ACME Certificate Management](#acme-certificate-management)
   - [SAML Certificate Auto-Rotation](#saml-certificate-auto-rotation)
   - [Real-Time Event Grid Integration](#real-time-event-grid-integration)
+  - [Event Grid Configuration Page](#event-grid-configuration-page)
   - [Multi-Channel Notifications](#multi-channel-notifications)
   - [Export and Reporting](#export-and-reporting)
   - [Acknowledgment and Snooze Workflow](#acknowledgment-and-snooze-workflow)
@@ -55,11 +58,14 @@ Manual tracking via spreadsheets or calendar reminders does not scale. This tool
 
 | Feature | Description |
 |---|---|
+| **Setup Wizard** | Guided first-time configuration — choose between Azure Cosmos DB or fully local storage, configure Azure identity, and start using the app with no manual .env editing required |
+| **Dual-Mode Storage** | Run with Azure Cosmos DB for production or with local JSON file storage for development and evaluation — same query interface, zero cloud dependency in local mode |
 | **Multi-Source Scanning** | Discovers secrets, keys, and certificates from Azure Key Vaults, App Registrations (client secrets + certificates), and Enterprise Applications (SAML signing certs) |
 | **Configurable Expiration Tiers** | Define custom thresholds (critical, warning, notice) with configurable day ranges |
 | **ACME Certificate Lifecycle** | Issue, renew, and revoke TLS certificates via Let's Encrypt or any ACME CA, with DNS-01 validation across Azure DNS, Cloudflare, and Route 53 |
 | **SAML Certificate Auto-Rotation** | Staged dual-certificate rollover for Entra ID enterprise apps via Microsoft Graph API |
 | **Real-Time Updates** | Azure Event Grid webhooks for instant detection of Key Vault changes (new versions, near-expiry, expired) |
+| **Event Grid Configuration Page** | Interactive setup guide with auto-detected webhook URL, Azure CLI commands, Bicep snippets, and endpoint verification |
 | **Multi-Channel Notifications** | Email, Microsoft Teams, Slack, and custom webhooks |
 | **RBAC with Entra ID** | Role-based access control using Entra ID App Roles with granular per-action permissions |
 | **Export** | CSV and PDF reports with server-side filtering and color-coded status |
@@ -78,9 +84,13 @@ Manual tracking via spreadsheets or calendar reminders does not scale. This tool
                          |     Frontend (SPA)    |
                          |  React + MUI + Vite   |
                          |  MSAL.js Auth (Entra) |
+                         |  Setup Wizard (first  |
+                         |    run, no auth)      |
                          +---------+-------------+
                                    |
                             Bearer Token (JWT)
+                           (or unauthenticated
+                            for setup wizard)
                                    |
                          +---------v-------------+
                          |   Backend (FastAPI)    |
@@ -90,17 +100,21 @@ Manual tracking via spreadsheets or calendar reminders does not scale. This tool
            +-------+-------+------+------+-------+-------+
            |       |       |      |      |       |       |
            v       v       v      v      v       v       v
-       +------+ +------+ +----+ +----+ +-----+ +-----+ +-------+
-       |Cosmos| |Graph | |Key | |ACME| |Event| |Notif| |  DNS  |
-       |  DB  | | API  | |Vault| | CA | |Grid | |icate| |Provid.|
-       +------+ +------+ +----+ +----+ +-----+ +-----+ +-------+
-          |         |       |                      |
-          |   App Regs  KV Secrets          Email/Teams/
-          |   Ent Apps  KV Keys             Slack/Webhook
-          |   SAML Certs KV Certs
-          |
-     items / settings /
-     scan_history containers
+     +----------+ +------+ +----+ +----+ +-----+ +-----+ +-------+
+     | Storage  | |Graph | |Key | |ACME| |Event| |Notif| |  DNS  |
+     | Layer    | | API  | |Vault| | CA | |Grid | |icate| |Provid.|
+     +----+-----+ +------+ +----+ +----+ +-----+ +-----+ +-------+
+          |            |       |                      |
+     +----+-----+  App Regs  KV Secrets        Email/Teams/
+     |          |  Ent Apps  KV Keys            Slack/Webhook
+     v          v  SAML Certs KV Certs
+  +------+  +------+
+  |Cosmos|  |Local |
+  |  DB  |  |JSON  |
+  +------+  |Store |
+            +------+
+     (set via STORAGE_MODE
+      env var or setup wizard)
 ```
 
 ### Data Flow
@@ -117,13 +131,19 @@ Manual tracking via spreadsheets or calendar reminders does not scale. This tool
 7. ACME orchestrator checks and renews TLS certificates on its own cron schedule
 8. SAML rotation orchestrator processes certificate rollover state machine on its own schedule
 
-### Cosmos DB Schema
+### Storage Schema
+
+The app uses three containers, available in both Cosmos DB and local JSON file modes:
 
 | Container | Partition Key | Purpose |
 |---|---|---|
 | `items` | `/partitionKey` | All scanned items (secrets, keys, certs, app credentials, SAML rotation jobs) |
-| `settings` | `/settingType` | Configuration (thresholds, notifications, schedule, SAML rotation) |
-| `scan_history` | `/status` | Scan run records with 90-day TTL auto-expiry |
+| `settings` | `/settingType` | Configuration (thresholds, notifications, schedule, SAML rotation, app_config) |
+| `scan_history` | `/status` | Scan run records with 90-day TTL auto-expiry (Cosmos only) |
+
+**Cosmos DB mode** (`STORAGE_MODE=cosmos`): Azure Cosmos DB NoSQL API with serverless billing. Containers are auto-created on first run.
+
+**Local mode** (`STORAGE_MODE=local`): Each container is stored as a JSON file under the data directory (default `./data`). A `LocalContainerProxy` class implements the same async interface as the Cosmos SDK, including a mini SQL engine that supports `SELECT`, `WHERE`, `AND`, `ORDER BY`, `OFFSET/LIMIT`, `TOP`, `COUNT`, `GROUP BY`, `DISTINCT`, and `CONTAINS(LOWER(...))`.
 
 ---
 
@@ -162,7 +182,7 @@ Manual tracking via spreadsheets or calendar reminders does not scale. This tool
 
 | Component | Technology |
 |---|---|
-| Database | Azure Cosmos DB (serverless mode, NoSQL API) |
+| Database | Azure Cosmos DB (serverless, NoSQL API) or local JSON file store (no cloud dependency) |
 | IaC | Bicep modules for Cosmos DB, Container Instances, Event Grid |
 | Containerization | Docker with multi-stage builds, Nginx for frontend |
 | Orchestration | Docker Compose (production + dev overrides) |
@@ -205,7 +225,7 @@ Granular per-action permissions that can be assigned as individual App Roles:
 
 1. **Zero secrets in code** — All credentials are loaded from environment variables via `pydantic-settings`. The `.env` file is gitignored. Cosmos DB keys, client secrets, and webhook URLs are never hardcoded.
 
-2. **Token validation on every request** — No endpoint (except `/api/health`) is accessible without a valid, signed JWT from your Entra ID tenant. Token validation checks signature (RS256), audience, and issuer.
+2. **Token validation on every request** — No endpoint (except `/api/health` and `/api/setup/*`) is accessible without a valid, signed JWT from your Entra ID tenant. Token validation checks signature (RS256), audience, and issuer. Setup endpoints are only accessible before the app is fully configured and are automatically locked once initialization completes.
 
 3. **Least-privilege RBAC** — Viewers cannot trigger scans, modify settings, or perform write operations. Individual permissions can be assigned at the App Role level without granting full Admin access.
 
@@ -251,6 +271,9 @@ Key Vault tags (`sm-status`, `sm-days`, `sm-scanned`) are written back to items,
 ### 6. Real-Time Incident Response
 When a Key Vault secret is rotated or expires, Event Grid triggers an immediate update in the system — no need to wait for the next scheduled scan.
 
+### 7. Quick Evaluation Without Azure
+A team wants to evaluate the tool before provisioning Azure resources. They clone the repo, run `docker-compose up`, and the setup wizard lets them choose "Run Locally". The app starts with JSON file storage — no Cosmos DB, no Azure subscription needed. When ready for production, they re-run the wizard or set `STORAGE_MODE=cosmos` in their `.env`.
+
 ---
 
 ## Getting Started
@@ -264,11 +287,13 @@ When a Key Vault secret is rotated or expires, Event Grid triggers an immediate 
 | Docker | Latest | Containerized deployment |
 | Azure CLI | Latest | (Optional) Azure resource management |
 
-**Azure Resources Required:**
+**Azure Resources (for cloud mode):**
 - Entra ID tenant with an App Registration
-- Azure Cosmos DB account (serverless recommended)
+- Azure Cosmos DB account (serverless recommended) — *not required if using local storage mode*
 - (Optional) Azure Key Vault for ACME certificate storage
 - (Optional) Azure Event Grid for real-time updates
+
+**No Azure resources required for local mode** — the app can run entirely offline with JSON file storage for evaluation and development.
 
 ### Quick Setup
 
@@ -283,17 +308,49 @@ cd MS-Secret-Manager
 .\setup.ps1       # Windows PowerShell
 ```
 
+After starting the app, open it in your browser. If no `.env` file is present (or configuration is incomplete), the **Setup Wizard** will launch automatically — no manual environment file editing is required. See [Setup Wizard](#setup-wizard-first-time-configuration) for details.
+
+### Setup Wizard (First-Time Configuration)
+
+When you launch the app for the first time without a `.env` file (or with an unconfigured instance), the frontend automatically detects that the app is not yet initialized and presents a guided setup wizard instead of the login page.
+
+**Step 1 — Choose Storage Mode:**
+- **Azure Cosmos DB** — Production-ready cloud storage. You'll provide connection details in the next step.
+- **Run Locally** — Zero cloud dependency. Data is stored as JSON files in the `./data` directory. Ideal for evaluation, development, or air-gapped environments.
+
+**Step 2 — Cosmos DB Connection** *(skipped in local mode)*:
+- Enter your Cosmos DB endpoint, key, and database name
+- Toggle "Use Cosmos DB Emulator" to auto-fill emulator credentials for local development
+- Toggle "Use Managed Identity" for Azure-hosted deployments
+- **Test Connection** button validates connectivity before proceeding
+
+**Step 3 — Azure / Entra ID Configuration:**
+- Tenant ID, Client ID, Client Secret (for local dev)
+- Azure environment (AzureCloud, AzureChinaCloud, AzureUSGovernment)
+- Optional: Managed Identity Client ID, MSAL Client ID
+
+**Step 4 — Review & Apply:**
+- Summary of all configuration
+- **Initialize Now** — Writes config to the database (or local store), starts the scheduler, and reloads the app into normal mode
+- **Generate .env File** — Downloads a complete `.env` file for manual deployment, useful for Docker or CI/CD pipelines
+
+After initialization, the setup endpoints are locked and the app redirects to the normal authentication flow.
+
 ### Environment Configuration
 
-Copy `.env.example` to `.env` and fill in the required values:
+Copy `.env.example` to `.env` and fill in the required values (alternatively, use the [Setup Wizard](#setup-wizard-first-time-configuration) for guided configuration):
 
 ```bash
+# Storage Mode — "cosmos" (Azure Cosmos DB) or "local" (JSON files, no cloud)
+STORAGE_MODE=cosmos
+# LOCAL_DATA_DIR=./data                          # Only used when STORAGE_MODE=local
+
 # Required — Azure / Entra ID
 AZURE_TENANT_ID=your-tenant-id
 AZURE_CLIENT_ID=your-app-registration-client-id
 AZURE_CLIENT_SECRET=your-client-secret          # Local dev only; use managed identity in production
 
-# Required — Cosmos DB
+# Required (cosmos mode only) — Cosmos DB
 COSMOS_ENDPOINT=https://your-account.documents.azure.com:443/
 COSMOS_KEY=your-cosmos-key
 COSMOS_DATABASE=secret-manager
@@ -366,6 +423,9 @@ docker-compose -f docker-compose.yml -f docker-compose.dev.yml up
 
 # With Cosmos DB Emulator for fully local development
 docker-compose --profile dev up
+
+# Fully local (no Azure) — set STORAGE_MODE=local in .env or use the setup wizard
+STORAGE_MODE=local docker-compose up -d
 ```
 
 | Service | URL |
@@ -409,7 +469,19 @@ az deployment group create \
 
 ## API Reference
 
-All endpoints require a valid Bearer token from Entra ID (except `/api/health`).
+All endpoints require a valid Bearer token from Entra ID (except `/api/health` and `/api/setup/*`).
+
+### Setup (Unauthenticated — only available before initialization)
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/setup/status` | Check if the app is configured (storage ready, Azure configured, MSAL configured) |
+| `GET` | `/api/setup/frontend-config` | Get MSAL client config for dynamic frontend auth initialization |
+| `POST` | `/api/setup/validate-cosmos` | Test Cosmos DB connectivity with provided credentials |
+| `POST` | `/api/setup/initialize` | Apply configuration, initialize storage, seed defaults, start scheduler |
+| `POST` | `/api/setup/generate-env` | Generate a downloadable `.env` file from provided configuration |
+
+These endpoints are protected by `_require_setup_mode()` — they return `403` once the app is fully configured, preventing reconfiguration through the API.
 
 ### Core Endpoints
 
@@ -501,6 +573,40 @@ All endpoints require a valid Bearer token from Entra ID (except `/api/health`).
 
 ## Feature Deep Dives
 
+### Setup Wizard and Dual-Mode Storage
+
+The app supports two storage backends, selectable at startup via the setup wizard or the `STORAGE_MODE` environment variable:
+
+**Cosmos DB Mode** (`STORAGE_MODE=cosmos`)
+- Production-ready Azure Cosmos DB NoSQL API
+- Containers are auto-created on first run with appropriate partition keys
+- Supports Cosmos DB Emulator for local development without an Azure account
+- Managed Identity authentication for Azure-hosted deployments
+
+**Local Mode** (`STORAGE_MODE=local`)
+- Zero cloud dependency — all data stored as JSON files in `LOCAL_DATA_DIR` (default: `./data`)
+- `LocalContainerProxy` implements the same async interface as the Cosmos DB SDK (`create_item`, `upsert_item`, `read_item`, `delete_item`, `query_items`)
+- Built-in mini SQL engine parses the Cosmos SQL dialect used throughout the codebase
+- Atomic writes via temp file + `os.replace` to prevent data corruption
+- Ideal for evaluation, demos, development, and air-gapped environments
+
+**How the setup wizard works:**
+
+1. On first load, the frontend calls `GET /api/setup/status` (unauthenticated)
+2. If the app is not configured, the frontend renders `SetupWizardPage` instead of the login flow
+3. The wizard collects storage mode, connection details, and Azure identity configuration
+4. On "Initialize Now", the frontend `POST`s to `/api/setup/initialize` which:
+   - Updates the in-memory settings singleton
+   - Initializes the storage layer (Cosmos DB or local)
+   - Seeds default settings (thresholds, notifications, schedule)
+   - Stores an `app_config` document in the settings container
+   - Starts the scheduler
+5. The frontend reloads, MSAL fetches its config from `/api/setup/frontend-config`, and the normal auth flow begins
+6. Setup endpoints are locked after initialization — `_require_setup_mode()` returns `403`
+
+**Dynamic MSAL Configuration:**
+The frontend does not require `VITE_AZURE_CLIENT_ID` or `VITE_AZURE_TENANT_ID` to be set at build time. If these environment variables are absent, the `AuthProvider` fetches the MSAL configuration at runtime from the backend's `/api/setup/frontend-config` endpoint, which reads from the stored `app_config` document. This allows the frontend to be built once and deployed anywhere.
+
 ### Automated Secret Scanning
 
 The scanner runs on a configurable cron schedule (default: daily at 6 AM) and performs:
@@ -583,6 +689,21 @@ Azure Event Grid delivers Key Vault events to the system via webhook. Supported 
 
 When an event arrives, the system fetches the updated item directly from Key Vault, recomputes its expiration status, and upserts it into Cosmos DB — providing near-instant updates between scheduled scans.
 
+### Event Grid Configuration Page
+
+The app includes an interactive Event Grid setup guide accessible from the sidebar (Admin only). This page helps administrators configure Azure Event Grid to send Key Vault events to the application.
+
+**Auto-detected webhook URL:** The page automatically detects the browser's current origin (e.g., `https://secretmgr.azurewebsites.net`) and appends `/api/webhooks/eventgrid` to generate the correct webhook endpoint URL. This eliminates manual URL construction errors.
+
+**Features:**
+- **Verify Endpoint** button — Sends a mock Event Grid subscription validation event to confirm the webhook is reachable and responding correctly
+- **Step-by-step guide** — 5-step interactive MUI Stepper walking through prerequisites, Azure Portal navigation, Event Grid configuration, endpoint setup, and verification
+- **Azure CLI commands** — Ready-to-run CLI commands with the webhook URL pre-filled
+- **Bicep snippets** — Infrastructure-as-code templates for automated deployment
+- **Supported Event Types** — Visual reference of all 9 supported Key Vault events, color-coded by category (secrets, keys, certificates)
+- **How It Works** — Flow diagram explaining the event processing pipeline
+- **Retry Policy** — Information about Event Grid's built-in retry behavior
+
 ### Multi-Channel Notifications
 
 The notification engine evaluates scan results and sends alerts through multiple channels:
@@ -650,6 +771,10 @@ These tags are visible directly in the Azure Portal, Azure Resource Graph querie
 
 - **Modular service design** — Scanner, notification, ACME, SAML rotation, and export are independent service modules. Enable only what you need.
 
+- **Zero-config local mode** — Run the entire app with no Azure dependency using local JSON file storage. Switch to Cosmos DB when ready for production — the same query interface works with both backends.
+
+- **Guided setup** — First-time setup wizard handles storage selection, Azure identity configuration, and Cosmos DB connectivity testing. No manual `.env` editing required.
+
 - **Serverless-friendly data layer** — Cosmos DB serverless mode means you pay only for what you consume. No provisioned throughput to manage.
 
 - **Multi-cloud DNS** — ACME certificate validation works across Azure DNS, Cloudflare, and AWS Route 53, supporting hybrid and multi-cloud organizations.
@@ -694,7 +819,8 @@ MS-Secret-Manager/
 │   │   │   ├── msal_validator.py            # JWT validation against Entra ID JWKS
 │   │   │   └── rbac.py                      # Roles, permissions, RBAC definitions
 │   │   ├── db/
-│   │   │   ├── cosmos_client.py             # Cosmos DB client lifecycle + seeding
+│   │   │   ├── cosmos_client.py             # Dual-mode storage init (Cosmos DB or local)
+│   │   │   ├── local_store.py               # Local JSON file store + mini SQL engine
 │   │   │   ├── containers.py                # Container references
 │   │   │   └── queries.py                   # Parameterized query helpers
 │   │   ├── models/
@@ -707,6 +833,7 @@ MS-Secret-Manager/
 │   │   │   ├── scan.py                      # Scan run model
 │   │   │   └── settings.py                  # Settings model
 │   │   ├── routers/
+│   │   │   ├── setup.py                     # Setup wizard API (unauthenticated, pre-init only)
 │   │   │   ├── health.py                    # Health check endpoint
 │   │   │   ├── dashboard.py                 # Dashboard overview + timeline
 │   │   │   ├── keyvault_items.py            # Key Vault items CRUD
@@ -780,6 +907,7 @@ MS-Secret-Manager/
 │       │   └── useAuth.ts                  # Auth hook (login, logout, token)
 │       ├── api/
 │       │   ├── client.ts                   # Axios instance with auth interceptor
+│       │   ├── setup.ts                    # Setup wizard API (no auth, plain axios)
 │       │   ├── dashboard.ts                # Dashboard API calls
 │       │   ├── keyvaultItems.ts            # Key Vault items API
 │       │   ├── appRegistrations.ts         # App registrations API
@@ -800,6 +928,8 @@ MS-Secret-Manager/
 │       │   ├── useSettings.ts              # Settings hooks
 │       │   └── useAcknowledgment.ts        # Acknowledgment hooks
 │       ├── pages/
+│       │   ├── SetupWizardPage.tsx          # First-time setup wizard (storage + Azure config)
+│       │   ├── EventGridConfigPage.tsx      # Event Grid webhook setup guide
 │       │   ├── DashboardPage.tsx           # Overview dashboard
 │       │   ├── KeyVaultItemsPage.tsx       # Key Vault items table
 │       │   ├── AppRegistrationsPage.tsx    # App registration credentials
@@ -838,6 +968,7 @@ MS-Secret-Manager/
 │       ├── cosmos.bicep                   # Cosmos DB account + containers
 │       ├── container-instance.bicep       # ACI with managed identity
 │       └── event-grid.bicep               # Event Grid topic + subscription
+├── data/                                  # Local JSON store (STORAGE_MODE=local, gitignored)
 ├── docker-compose.yml                     # Production Docker Compose
 ├── docker-compose.dev.yml                 # Dev overrides (hot reload)
 ├── .env.example                           # Backend environment template

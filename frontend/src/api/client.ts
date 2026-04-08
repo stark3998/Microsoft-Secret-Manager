@@ -11,6 +11,8 @@ const apiClient = axios.create({
 
 // Attach MSAL access token to every request
 apiClient.interceptors.request.use(async (config) => {
+  if (!msalInstance) return config;
+
   const accounts = msalInstance.getAllAccounts();
   if (accounts.length > 0) {
     try {
@@ -30,7 +32,7 @@ apiClient.interceptors.request.use(async (config) => {
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && msalInstance) {
       msalInstance.acquireTokenRedirect(loginRequest);
     }
     return Promise.reject(error);

@@ -1,10 +1,15 @@
-import { ReactNode } from 'react';
+import { ReactNode, useState, useEffect } from 'react';
 import { MsalProvider, MsalAuthenticationTemplate } from '@azure/msal-react';
 import { PublicClientApplication, InteractionType } from '@azure/msal-browser';
-import { msalConfig, loginRequest } from './msalConfig';
 import { CircularProgress, Box, Typography } from '@mui/material';
+import { getMsalConfig, loginRequest, updateMsalConfig, isMsalConfigured } from './msalConfig';
+import { fetchFrontendConfig } from '../api/setup';
 
-const msalInstance = new PublicClientApplication(msalConfig);
+/**
+ * Shared MSAL instance — initialised once AuthProvider mounts.
+ * Other modules (e.g. api/client.ts) import this for silent token acquisition.
+ */
+export let msalInstance: PublicClientApplication | null = null;
 
 function LoadingComponent() {
   return (
@@ -31,8 +36,46 @@ function ErrorComponent({ error }: { error: Error | null }) {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
+  const [ready, setReady] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function init() {
+      try {
+        // If VITE_ env vars are not set, try fetching config from the backend
+        if (!isMsalConfigured()) {
+          const config = await fetchFrontendConfig();
+          if (config.configured && config.clientId && config.tenantId) {
+            updateMsalConfig(config.clientId, config.tenantId, config.authority);
+          } else {
+            if (!cancelled) setError('Authentication is not configured. Please complete the setup wizard.');
+            return;
+          }
+        }
+
+        const instance = new PublicClientApplication(getMsalConfig());
+        await instance.initialize();
+        msalInstance = instance;
+
+        if (!cancelled) setReady(true);
+      } catch (e) {
+        if (!cancelled) {
+          setError(e instanceof Error ? e.message : 'Failed to initialise authentication');
+        }
+      }
+    }
+
+    init();
+    return () => { cancelled = true; };
+  }, []);
+
+  if (error) return <ErrorComponent error={new Error(error)} />;
+  if (!ready) return <LoadingComponent />;
+
   return (
-    <MsalProvider instance={msalInstance}>
+    <MsalProvider instance={msalInstance!}>
       <MsalAuthenticationTemplate
         interactionType={InteractionType.Redirect}
         authenticationRequest={loginRequest}
@@ -44,5 +87,3 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     </MsalProvider>
   );
 }
-
-export { msalInstance };

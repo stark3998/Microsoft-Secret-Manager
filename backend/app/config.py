@@ -6,6 +6,10 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
+    # Storage mode: "cosmos" (Azure Cosmos DB) or "local" (JSON files, no cloud)
+    storage_mode: str = "cosmos"
+    local_data_dir: str = "./data"
+
     # Azure / Entra ID
     azure_tenant_id: str = ""
     azure_client_id: str = ""
