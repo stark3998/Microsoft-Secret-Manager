@@ -35,10 +35,12 @@ async def get_all_settings(user: UserInfo = Depends(require_admin)):
     thresholds = await _get_setting("thresholds")
     notifications = await _get_setting("notifications")
     schedule = await _get_setting("schedule")
+    saml_rotation = await _get_setting("saml_rotation")
     return {
         "thresholds": thresholds,
         "notifications": notifications,
         "schedule": schedule,
+        "samlRotation": saml_rotation,
     }
 
 
@@ -58,6 +60,23 @@ async def update_notifications(body: dict, user: UserInfo = Depends(require_admi
     ]
     updates = {k: v for k, v in body.items() if k in allowed_keys}
     return await _update_setting("notifications", updates, user)
+
+
+@router.get("/saml-rotation")
+async def get_saml_rotation_settings(user: UserInfo = Depends(require_admin)):
+    """Get SAML certificate rotation configuration."""
+    return await _get_setting("saml_rotation")
+
+
+@router.put("/saml-rotation")
+async def update_saml_rotation_settings(body: dict, user: UserInfo = Depends(require_admin)):
+    """Update SAML certificate rotation configuration."""
+    allowed_keys = [
+        "enabled", "triggerDays", "activationGraceDays", "cleanupGraceDays",
+        "autoActivate", "excludedServicePrincipals", "spMetadataRefreshCapable",
+    ]
+    updates = {k: v for k, v in body.items() if k in allowed_keys}
+    return await _update_setting("saml_rotation", updates, user)
 
 
 @router.put("/schedule")

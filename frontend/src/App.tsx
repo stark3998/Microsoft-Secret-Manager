@@ -11,6 +11,7 @@ import { AppRegistrationsPage } from './pages/AppRegistrationsPage';
 import { EnterpriseAppsPage } from './pages/EnterpriseAppsPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CertificatesPage } from './pages/CertificatesPage';
+import { SamlRotationPage } from './pages/SamlRotationPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 
 const queryClient = new QueryClient({
@@ -54,6 +55,14 @@ export default function App() {
                     element={
                       <ProtectedRoute requiredRole="Admin">
                         <CertificatesPage />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/saml-rotation"
+                    element={
+                      <ProtectedRoute requiredRole="Admin">
+                        <SamlRotationPage />
                       </ProtectedRoute>
                     }
                   />

@@ -215,3 +215,68 @@ export interface SnoozeRequest {
   snooze_days: number;
   note?: string;
 }
+
+// SAML Certificate Rotation types
+export type RotationState = 'staged' | 'notified' | 'activated' | 'completed' | 'cancelled' | 'failed';
+
+export interface RotationJob {
+  id: string;
+  partitionKey: string;
+  itemType: string;
+  servicePrincipalId: string;
+  appId: string;
+  appDisplayName: string;
+  state: RotationState;
+  oldThumbprint: string;
+  oldKeyId: string;
+  newThumbprint: string;
+  newKeyId: string;
+  newCertExpiresOn: string | null;
+  initiatedAt: string;
+  initiatedBy: string;
+  stagedAt: string | null;
+  notifiedAt: string | null;
+  activatedAt: string | null;
+  completedAt: string | null;
+  cancelledAt: string | null;
+  cancelledBy: string;
+  failedAt: string | null;
+  failureReason: string;
+  history: Array<{ action: string; at: string; by?: string; details?: string }>;
+}
+
+export interface InitiateRotationRequest {
+  service_principal_id: string;
+  app_display_name?: string;
+}
+
+export interface EligibleApp {
+  servicePrincipalId: string;
+  appId: string;
+  appDisplayName: string;
+  currentThumbprint: string;
+  expiresOn: string;
+  daysUntilExpiration: number;
+  hasActiveRotation: boolean;
+  isExcluded: boolean;
+}
+
+export interface RotationCycleSummary {
+  initiated: number;
+  notified: number;
+  activated: number;
+  completed: number;
+  errors: number;
+}
+
+export interface SamlRotationSettings {
+  enabled: boolean;
+  triggerDays: number;
+  activationGraceDays: number;
+  cleanupGraceDays: number;
+  autoActivate: boolean;
+  excludedServicePrincipals: string[];
+  spMetadataRefreshCapable: string[];
+  updatedBy: string;
+  updatedAt: string | null;
+}

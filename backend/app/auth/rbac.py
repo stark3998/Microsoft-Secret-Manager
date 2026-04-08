@@ -16,6 +16,7 @@ class Permission(StrEnum):
     ACKNOWLEDGE_ITEM = "SecretManager.AcknowledgeItem"
     EXPORT_DATA = "SecretManager.ExportData"
     MANAGE_DNS = "SecretManager.ManageDns"
+    ROTATE_SAML_CERTIFICATE = "SecretManager.RotateSamlCertificate"
 
 
 # Admin role implicitly has all permissions

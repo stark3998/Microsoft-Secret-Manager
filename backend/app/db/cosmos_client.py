@@ -121,6 +121,19 @@ async def _seed_default_settings() -> None:
             "updatedBy": "system",
             "updatedAt": None,
         },
+        {
+            "id": "saml_rotation",
+            "settingType": "saml_rotation",
+            "enabled": False,
+            "triggerDays": 60,
+            "activationGraceDays": 14,
+            "cleanupGraceDays": 7,
+            "autoActivate": False,
+            "excludedServicePrincipals": [],
+            "spMetadataRefreshCapable": [],
+            "updatedBy": "system",
+            "updatedAt": None,
+        },
     ]
 
     for doc in defaults:

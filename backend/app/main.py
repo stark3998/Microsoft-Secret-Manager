@@ -9,7 +9,7 @@ from app.db.cosmos_client import init_cosmos, close_cosmos
 from app.routers import (
     health, dashboard, keyvault_items, app_registrations, enterprise_apps,
     settings as settings_router, scans, webhooks, certificates, dns_zones,
-    export, acknowledgment,
+    export, acknowledgment, saml_rotation,
 )
 from app.services.scheduler import start_scheduler, stop_scheduler
 from app.utils.telemetry import setup_telemetry
@@ -62,3 +62,4 @@ app.include_router(certificates.router)
 app.include_router(dns_zones.router)
 app.include_router(export.router)
 app.include_router(acknowledgment.router)
+app.include_router(saml_rotation.router)

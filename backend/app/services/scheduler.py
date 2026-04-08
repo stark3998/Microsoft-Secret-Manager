@@ -26,6 +26,15 @@ async def _run_certificate_renewal():
     logger.info(f"Certificate renewal check complete: {renewed} renewed, {errors} errors")
 
 
+async def _run_saml_rotation_cycle():
+    """Wrapper for the scheduled SAML certificate rotation cycle."""
+    from app.services.saml_rotation.orchestrator import SamlRotationOrchestrator
+    logger.info("Starting scheduled SAML rotation cycle...")
+    orchestrator = SamlRotationOrchestrator()
+    result = await orchestrator.run_rotation_cycle()
+    logger.info(f"SAML rotation cycle complete: {result}")
+
+
 async def _run_purge():
     """Wrapper for the scheduled scan history purge."""
     from app.services.purge import purge_old_scan_history
@@ -65,6 +74,18 @@ async def start_scheduler() -> None:
                 replace_existing=True,
             )
             logger.info(f"ACME renewal scheduler: {settings.acme_renewal_cron}")
+
+        # SAML certificate rotation job
+        if settings.saml_rotation_enabled:
+            rotation_trigger = CronTrigger.from_crontab(settings.saml_rotation_cron)
+            _scheduler.add_job(
+                _run_saml_rotation_cycle,
+                trigger=rotation_trigger,
+                id="saml_rotation",
+                name="SAML Certificate Rotation",
+                replace_existing=True,
+            )
+            logger.info(f"SAML rotation scheduler: {settings.saml_rotation_cron}")
 
         # Purge job (monthly)
         purge_trigger = CronTrigger.from_crontab(settings.purge_cron_expression)

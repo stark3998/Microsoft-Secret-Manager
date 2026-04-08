@@ -4,6 +4,7 @@ export const ROUTES = {
   APP_REGISTRATIONS: '/app-registrations',
   ENTERPRISE_APPS: '/enterprise-apps',
   CERTIFICATES: '/certificates',
+  SAML_ROTATION: '/saml-rotation',
   SETTINGS: '/settings',
 } as const;
 
@@ -37,4 +38,22 @@ export const ITEM_TYPE_LABELS: Record<string, string> = {
   certificate: 'Certificate',
   client_secret: 'Client Secret',
   saml_certificate: 'SAML Certificate',
+};
+
+export const ROTATION_STATE_COLORS: Record<string, string> = {
+  staged: '#0288d1',
+  notified: '#ed6c02',
+  activated: '#2e7d32',
+  completed: '#9e9e9e',
+  cancelled: '#757575',
+  failed: '#d32f2f',
+};
+
+export const ROTATION_STATE_LABELS: Record<string, string> = {
+  staged: 'Staged',
+  notified: 'Awaiting SP Update',
+  activated: 'Active',
+  completed: 'Completed',
+  cancelled: 'Cancelled',
+  failed: 'Failed',
 };

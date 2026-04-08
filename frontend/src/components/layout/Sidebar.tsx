@@ -15,6 +15,7 @@ import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
 import BusinessIcon from '@mui/icons-material/Business';
 import SecurityIcon from '@mui/icons-material/Security';
+import AutorenewIcon from '@mui/icons-material/Autorenew';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useAuth } from '../../auth/useAuth';
 import { ROUTES } from '../../utils/constants';
@@ -27,6 +28,7 @@ const navItems = [
   { label: 'App Registrations', path: ROUTES.APP_REGISTRATIONS, icon: <AppRegistrationIcon /> },
   { label: 'Enterprise Apps', path: ROUTES.ENTERPRISE_APPS, icon: <BusinessIcon /> },
   { label: 'Certificates', path: ROUTES.CERTIFICATES, icon: <SecurityIcon /> },
+  { label: 'SAML Rotation', path: ROUTES.SAML_ROTATION, icon: <AutorenewIcon /> },
 ];
 
 export function Sidebar() {

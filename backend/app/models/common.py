@@ -7,6 +7,7 @@ class ItemType(StrEnum):
     CERTIFICATE = "certificate"
     CLIENT_SECRET = "client_secret"
     SAML_CERTIFICATE = "saml_certificate"
+    SAML_ROTATION_JOB = "saml_rotation_job"
 
 
 class Source(StrEnum):

@@ -51,6 +51,16 @@ class Settings(BaseSettings):
     dns_route53_secret_key: str = ""
     dns_route53_region: str = "us-east-1"
 
+    # SAML Certificate Auto-Rotation
+    saml_rotation_enabled: bool = False
+    saml_rotation_trigger_days: int = 60  # Initiate when cert has this many days left
+    saml_notification_delay_hours: int = 1  # Hours after staging before notification
+    saml_activation_grace_days: int = 14  # Days after notification before auto-activation
+    saml_cleanup_grace_days: int = 7  # Days after activation before removing old cert
+    saml_auto_activate: bool = False  # Require manual approval by default
+    saml_rotation_cron: str = "0 8 * * *"  # Daily at 8 AM
+    saml_new_cert_validity_years: int = 3
+
     # Observability
     applicationinsights_connection_string: str = ""
     otel_exporter_otlp_endpoint: str = ""
