@@ -7,6 +7,7 @@ export const ROUTES = {
   SAML_ROTATION: '/saml-rotation',
   EVENTGRID_CONFIG: '/eventgrid-config',
   SETTINGS: '/settings',
+  PROFILE: '/profile',
 } as const;
 
 export const STATUS_COLORS: Record<string, string> = {

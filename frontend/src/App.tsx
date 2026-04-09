@@ -16,6 +16,7 @@ import { SamlRotationPage } from './pages/SamlRotationPage';
 import { EventGridConfigPage } from './pages/EventGridConfigPage';
 import { SetupWizardPage } from './pages/SetupWizardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { fetchSetupStatus } from './api/setup';
 import { setAuthDisabledMode } from './auth/useAuth';
 
@@ -288,6 +289,7 @@ function AppRoutes() {
               </ProtectedRoute>
             }
           />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route path="*" element={<NotFoundPage />} />
         </Route>
       </Routes>
