@@ -17,8 +17,14 @@ logger = logging.getLogger(__name__)
 SCAN_SEMAPHORE = asyncio.Semaphore(10)
 
 
-async def run_full_scan(triggered_by: str = "system") -> dict:
-    """Run a complete scan of all Key Vaults, App Registrations, and Enterprise Apps."""
+async def run_full_scan(triggered_by: str = "system", credential=None) -> dict:
+    """Run a complete scan of all Key Vaults, App Registrations, and Enterprise Apps.
+
+    Args:
+        triggered_by: User email or "system" for scheduled scans.
+        credential: Optional pre-built credential (e.g. DelegatedTokenCredential).
+                    Falls back to the service-principal DefaultAzureCredential.
+    """
     scan_id = str(uuid.uuid4())
     now = datetime.now(timezone.utc)
 
@@ -26,6 +32,7 @@ async def run_full_scan(triggered_by: str = "system") -> dict:
         "id": scan_id,
         "status": "running",
         "trigger": "manual" if triggered_by != "system" else "scheduled",
+        "credentialMode": "delegated" if credential else "service_principal",
         "startedAt": now.isoformat(),
         "completedAt": None,
         "subscriptionsScanned": 0,
@@ -42,7 +49,8 @@ async def run_full_scan(triggered_by: str = "system") -> dict:
     await upsert_item(scan_history, scan_doc)
 
     try:
-        credential = get_azure_credential()
+        if credential is None:
+            credential = get_azure_credential()
 
         # Load settings for subscription filter and thresholds
         settings_container = get_settings_container()

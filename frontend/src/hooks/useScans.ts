@@ -19,7 +19,7 @@ export function useLatestScan() {
 export function useTriggerScan() {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: triggerScan,
+    mutationFn: (useDelegated: boolean = false) => triggerScan(useDelegated),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['scans'] });
     },

@@ -1,7 +1,8 @@
-import { Card, CardContent, Typography, Box, Button } from '@mui/material';
+import { Card, CardContent, Typography, Box, Button, Tooltip } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrowOutlined';
+import PersonIcon from '@mui/icons-material/PersonOutlined';
 import { useLatestScan, useTriggerScan } from '../../hooks/useScans';
-import { useAuth } from '../../auth/useAuth';
+import { useAuth, authDisabledMode } from '../../auth/useAuth';
 import { formatDateTime, formatRelativeTime } from '../../utils/formatters';
 
 export function RecentActivity() {
@@ -17,16 +18,32 @@ export function RecentActivity() {
             Last Scan
           </Typography>
           {user?.isAdmin && (
-            <Button
-              size="small"
-              variant="outlined"
-              startIcon={<PlayArrowIcon sx={{ fontSize: '1rem !important' }} />}
-              onClick={() => triggerScan.mutate()}
-              disabled={triggerScan.isPending}
-              sx={{ fontSize: '0.75rem' }}
-            >
-              {triggerScan.isPending ? 'Starting...' : 'Scan Now'}
-            </Button>
+            <Box display="flex" alignItems="center" gap={0.75}>
+              <Button
+                size="small"
+                variant="outlined"
+                startIcon={<PlayArrowIcon sx={{ fontSize: '1rem !important' }} />}
+                onClick={() => triggerScan.mutate(false)}
+                disabled={triggerScan.isPending}
+                sx={{ fontSize: '0.75rem' }}
+              >
+                {triggerScan.isPending ? 'Starting...' : 'Scan Now'}
+              </Button>
+              {!authDisabledMode && (
+                <Tooltip title="Scan using your Entra ID permissions instead of the service principal" arrow>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    startIcon={<PersonIcon sx={{ fontSize: '1rem !important' }} />}
+                    onClick={() => triggerScan.mutate(true)}
+                    disabled={triggerScan.isPending}
+                    sx={{ fontSize: '0.75rem' }}
+                  >
+                    Scan as Me
+                  </Button>
+                </Tooltip>
+              )}
+            </Box>
           )}
         </Box>
 

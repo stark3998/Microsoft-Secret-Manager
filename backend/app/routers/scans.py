@@ -1,7 +1,9 @@
 import asyncio
 import logging
+from typing import Optional
 
 from fastapi import APIRouter, Depends, BackgroundTasks
+from pydantic import BaseModel
 
 from app.auth.dependencies import require_admin, require_viewer
 from app.db.cosmos_client import get_scan_history_container
@@ -13,16 +15,42 @@ logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/scans", tags=["scans"])
 
 
+class DelegatedTokens(BaseModel):
+    """Tokens acquired by the frontend via MSAL for user-delegated scanning."""
+    graph: Optional[str] = None
+    management: Optional[str] = None
+    keyvault: Optional[str] = None
+
+
+class ScanTriggerBody(BaseModel):
+    delegatedTokens: Optional[DelegatedTokens] = None
+
+
 @router.post("/trigger")
 async def trigger_scan(
     background_tasks: BackgroundTasks,
+    body: ScanTriggerBody = ScanTriggerBody(),
     user: UserInfo = Depends(require_admin),
 ):
-    """Trigger an immediate full scan."""
+    """Trigger an immediate full scan.
+
+    Optionally accepts delegated tokens to scan using the logged-in user's
+    permissions instead of the service principal.
+    """
     from app.services.scanner.orchestrator import run_full_scan
 
-    background_tasks.add_task(run_full_scan, triggered_by=user.email)
-    return {"status": "started", "message": "Full scan triggered in background"}
+    credential = None
+    if body.delegatedTokens:
+        from app.utils.azure_credential import DelegatedTokenCredential
+        tokens = body.delegatedTokens.model_dump(exclude_none=True)
+        if tokens:
+            credential = DelegatedTokenCredential(tokens)
+            logger.info(f"Scan triggered with delegated credentials by {user.email} "
+                        f"(resources: {list(tokens.keys())})")
+
+    background_tasks.add_task(run_full_scan, triggered_by=user.email, credential=credential)
+    mode = "delegated" if credential else "service_principal"
+    return {"status": "started", "message": f"Full scan triggered in background ({mode} credentials)"}
 
 
 @router.get("/history")
