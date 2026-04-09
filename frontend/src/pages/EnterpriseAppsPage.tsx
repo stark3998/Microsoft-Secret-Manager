@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { Box, Typography, Button } from '@mui/material';
+import { Box, Typography, Button, Breadcrumbs, Link } from '@mui/material';
 import AddIcon from '@mui/icons-material/AddOutlined';
+import RefreshIcon from '@mui/icons-material/RefreshOutlined';
+import HomeIcon from '@mui/icons-material/HomeOutlined';
+import BusinessIcon from '@mui/icons-material/BusinessOutlined';
 import {
   useEnterpriseApps,
   useCreateEnterpriseApp, useUpdateEnterpriseApp, useDeleteEnterpriseApp,
@@ -31,7 +34,7 @@ export function EnterpriseAppsPage() {
   const { user } = useAuth();
   const isAdmin = user?.isAdmin ?? false;
 
-  const { data, isLoading } = useEnterpriseApps({
+  const { data, isLoading, refetch } = useEnterpriseApps({
     search: search || undefined,
     status: status || undefined,
     page,
@@ -47,11 +50,22 @@ export function EnterpriseAppsPage() {
       key: 'appDisplayName',
       label: 'Application',
       render: (item: Record<string, unknown>) => (
-        <Typography variant="body2" fontWeight={500}>{item.appDisplayName as string}</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <BusinessIcon sx={{ fontSize: '1rem', color: '#0078D4' }} />
+          <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0078D4' }}>{item.appDisplayName as string}</Typography>
+        </Box>
       ),
     },
     { key: 'certType', label: 'Cert Type' },
-    { key: 'thumbprint', label: 'Thumbprint' },
+    {
+      key: 'thumbprint',
+      label: 'Thumbprint',
+      render: (item: Record<string, unknown>) => (
+        <Typography sx={{ fontSize: '0.75rem', fontFamily: '"JetBrains Mono", "Fira Code", monospace', color: '#605E5C' }}>
+          {item.thumbprint as string}
+        </Typography>
+      ),
+    },
     {
       key: 'expiresOn',
       label: 'Expires',
@@ -60,7 +74,11 @@ export function EnterpriseAppsPage() {
     {
       key: 'daysUntilExpiration',
       label: 'Time Left',
-      render: (item: Record<string, unknown>) => formatDaysUntilExpiration(item.daysUntilExpiration as number | null),
+      render: (item: Record<string, unknown>) => (
+        <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#323130' }}>
+          {formatDaysUntilExpiration(item.daysUntilExpiration as number | null)}
+        </Typography>
+      ),
     },
     {
       key: 'expirationStatus',
@@ -89,18 +107,35 @@ export function EnterpriseAppsPage() {
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3.5}>
-        <Box>
-          <Typography variant="h4">Enterprise Apps</Typography>
-          <Typography sx={{ color: '#6B7280', fontSize: '0.8125rem', mt: 0.5 }}>
-            SAML signing and encryption certificates for enterprise applications.
-          </Typography>
-        </Box>
+      <Breadcrumbs sx={{ mb: 1.5, '& .MuiBreadcrumbs-separator': { color: '#A19F9D' } }}>
+        <Link underline="hover" color="#605E5C" href="/" sx={{ display: 'flex', alignItems: 'center', fontSize: '0.8125rem' }}>
+          <HomeIcon sx={{ fontSize: '0.875rem', mr: 0.5 }} />
+          Home
+        </Link>
+        <Typography sx={{ fontSize: '0.8125rem', color: '#323130', fontWeight: 600 }}>Enterprise Apps</Typography>
+      </Breadcrumbs>
+
+      <Box mb={2}>
+        <Typography variant="h4">Enterprise Apps</Typography>
+        <Typography sx={{ color: '#605E5C', fontSize: '0.8125rem', mt: 0.5 }}>
+          SAML signing and encryption certificates for enterprise applications.
+        </Typography>
+      </Box>
+
+      {/* Command bar */}
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 1, mb: 1.5,
+        px: 1.5, py: 0.75, backgroundColor: '#FFFFFF', border: '1px solid #EDEBE9', borderRadius: '2px',
+        boxShadow: '0 1.6px 3.6px 0 rgba(0,0,0,.132), 0 0.3px 0.9px 0 rgba(0,0,0,.108)',
+      }}>
         {isAdmin && (
-          <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => setCreateOpen(true)}>
+          <Button variant="text" startIcon={<AddIcon />} size="small" onClick={() => setCreateOpen(true)}>
             Add Certificate
           </Button>
         )}
+        <Button variant="text" startIcon={<RefreshIcon />} size="small" onClick={() => refetch()}>
+          Refresh
+        </Button>
       </Box>
 
       <ItemFilters

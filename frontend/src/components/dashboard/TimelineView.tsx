@@ -1,4 +1,5 @@
-import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow } from '@mui/material';
+import { Card, CardContent, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Box } from '@mui/material';
+import ScheduleIcon from '@mui/icons-material/ScheduleOutlined';
 import { StatusBadge } from '../common/StatusBadge';
 import { formatDate, formatDaysUntilExpiration } from '../../utils/formatters';
 import { SOURCE_LABELS, ITEM_TYPE_LABELS } from '../../utils/constants';
@@ -15,11 +16,17 @@ export function TimelineView({ items }: TimelineViewProps) {
 
   return (
     <Card>
-      <CardContent sx={{ py: 2.5, px: 2.5, '&:last-child': { pb: 2.5 } }}>
-        <Typography sx={{ fontSize: '0.6875rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.04em', textTransform: 'uppercase', mb: 2 }}>
-          Upcoming Expirations
-        </Typography>
-        <TableContainer sx={{ borderRadius: 1, overflow: 'hidden' }}>
+      <CardContent sx={{ py: 0, px: 0, '&:last-child': { pb: 0 } }}>
+        <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #EDEBE9', display: 'flex', alignItems: 'center', gap: 1 }}>
+          <ScheduleIcon sx={{ fontSize: '1rem', color: '#0078D4' }} />
+          <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#323130' }}>
+            Upcoming Expirations
+          </Typography>
+          <Typography sx={{ fontSize: '0.75rem', color: '#A19F9D', ml: 'auto' }}>
+            {upcoming.length} items
+          </Typography>
+        </Box>
+        <TableContainer>
           <Table size="small">
             <TableHead>
               <TableRow>
@@ -36,32 +43,32 @@ export function TimelineView({ items }: TimelineViewProps) {
               {upcoming.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
-                    <Typography sx={{ fontSize: '0.8125rem', fontWeight: 500, color: '#111827' }}>
+                    <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0078D4' }}>
                       {item.itemName}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography sx={{ fontSize: '0.8125rem', color: '#6B7280' }}>
+                    <Typography sx={{ fontSize: '0.8125rem', color: '#605E5C' }}>
                       {ITEM_TYPE_LABELS[item.itemType] || item.itemType}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography sx={{ fontSize: '0.8125rem', color: '#6B7280' }}>
+                    <Typography sx={{ fontSize: '0.8125rem', color: '#605E5C' }}>
                       {SOURCE_LABELS[item.source] || item.source}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography sx={{ fontSize: '0.8125rem', color: '#6B7280' }}>
+                    <Typography sx={{ fontSize: '0.8125rem', color: '#605E5C' }}>
                       {item.vaultName || item.appDisplayName || '-'}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography sx={{ fontSize: '0.8125rem', color: '#6B7280' }}>
+                    <Typography sx={{ fontSize: '0.8125rem', color: '#605E5C' }}>
                       {formatDate(item.expiresOn)}
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography sx={{ fontSize: '0.8125rem', color: '#374151', fontWeight: 500 }}>
+                    <Typography sx={{ fontSize: '0.8125rem', color: '#323130', fontWeight: 600 }}>
                       {formatDaysUntilExpiration(item.daysUntilExpiration)}
                     </Typography>
                   </TableCell>
@@ -71,7 +78,7 @@ export function TimelineView({ items }: TimelineViewProps) {
               {upcoming.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={7} align="center" sx={{ py: 6 }}>
-                    <Typography sx={{ color: '#9CA3AF', fontSize: '0.8125rem' }}>
+                    <Typography sx={{ color: '#A19F9D', fontSize: '0.8125rem' }}>
                       No items with expiration dates found
                     </Typography>
                   </TableCell>

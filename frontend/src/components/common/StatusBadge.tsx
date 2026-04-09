@@ -6,31 +6,46 @@ interface StatusBadgeProps {
   size?: 'small' | 'medium';
 }
 
+const STATUS_ICONS: Record<string, string> = {
+  expired: '\u2716',     // X
+  critical: '\u26A0',    // warning sign
+  warning: '\u25B2',     // triangle
+  notice: '\u25CF',      // filled circle
+  healthy: '\u2714',     // checkmark
+  no_expiry: '\u2014',   // em dash
+  unknown: '\u2014',
+};
+
 export function StatusBadge({ status, size = 'small' }: StatusBadgeProps) {
-  const color = STATUS_COLORS[status] || '#9CA3AF';
+  const color = STATUS_COLORS[status] || '#8A8886';
   const label = STATUS_LABELS[status] || status;
+  const icon = STATUS_ICONS[status] || '\u25CF';
 
   return (
     <Box
       sx={{
         display: 'inline-flex',
         alignItems: 'center',
-        gap: 0.625,
-        px: 1,
-        py: 0.375,
-        borderRadius: '6px',
-        backgroundColor: `${color}0D`,
-        border: `1px solid ${color}1A`,
-        transition: 'all 0.15s ease',
+        gap: 0.5,
+        px: size === 'small' ? 0.75 : 1,
+        py: 0.25,
+        borderRadius: '2px',
+        backgroundColor: `${color}14`,
+        borderLeft: `3px solid ${color}`,
       }}
     >
-      <Box sx={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: color, flexShrink: 0 }} />
+      <Typography sx={{
+        fontSize: size === 'small' ? '0.625rem' : '0.6875rem',
+        lineHeight: 1,
+        color,
+      }}>
+        {icon}
+      </Typography>
       <Typography sx={{
         fontSize: size === 'small' ? '0.6875rem' : '0.75rem',
         fontWeight: 600,
         color,
         lineHeight: 1.4,
-        letterSpacing: '-0.01em',
       }}>
         {label}
       </Typography>

@@ -9,15 +9,16 @@ interface ExpirationChartProps {
 
 const tooltipStyle = {
   fontSize: '0.75rem',
-  borderRadius: 8,
-  border: '1px solid #E5E7EB',
-  boxShadow: '0 4px 12px rgba(0,0,0,0.08)',
-  padding: '8px 12px',
+  borderRadius: 2,
+  border: '1px solid #EDEBE9',
+  boxShadow: '0 3.2px 7.2px 0 rgba(0,0,0,.132)',
+  padding: '6px 10px',
+  fontFamily: '"Segoe UI", sans-serif',
 };
 
-function SectionHeader({ children }: { children: React.ReactNode }) {
+function ChartTitle({ children }: { children: React.ReactNode }) {
   return (
-    <Typography sx={{ fontSize: '0.6875rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.04em', textTransform: 'uppercase', mb: 2 }}>
+    <Typography sx={{ fontSize: '0.875rem', fontWeight: 600, color: '#323130', mb: 2 }}>
       {children}
     </Typography>
   );
@@ -29,7 +30,7 @@ export function ExpirationChart({ data }: ExpirationChartProps) {
     .map(([key, value]) => ({
       name: key.charAt(0).toUpperCase() + key.slice(1).replace('_', ' '),
       value,
-      color: STATUS_COLORS[key] || '#9CA3AF',
+      color: STATUS_COLORS[key] || '#8A8886',
     }));
 
   const sourceData = Object.entries(data.bySource).map(([key, value]) => ({
@@ -43,12 +44,12 @@ export function ExpirationChart({ data }: ExpirationChartProps) {
   }));
 
   return (
-    <Grid container spacing={2}>
+    <Grid container spacing={1.5}>
       <Grid item xs={12} md={4}>
         <Card sx={{ height: '100%' }}>
-          <CardContent sx={{ py: 2.5, px: 2.5 }}>
-            <SectionHeader>Status Distribution</SectionHeader>
-            <ResponsiveContainer width="100%" height={220}>
+          <CardContent sx={{ py: 2, px: 2.5 }}>
+            <ChartTitle>Severity Distribution</ChartTitle>
+            <ResponsiveContainer width="100%" height={200}>
               <PieChart>
                 <Pie
                   data={statusData}
@@ -56,9 +57,9 @@ export function ExpirationChart({ data }: ExpirationChartProps) {
                   nameKey="name"
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
+                  innerRadius={55}
                   outerRadius={80}
-                  paddingAngle={2}
+                  paddingAngle={1}
                   strokeWidth={0}
                 >
                   {statusData.map((entry, i) => (
@@ -68,11 +69,11 @@ export function ExpirationChart({ data }: ExpirationChartProps) {
                 <Tooltip contentStyle={tooltipStyle} />
               </PieChart>
             </ResponsiveContainer>
-            <Box display="flex" flexWrap="wrap" gap={1.5} mt={1} justifyContent="center">
+            <Box display="flex" flexWrap="wrap" gap={1.5} mt={0.5} justifyContent="center">
               {statusData.map((entry) => (
                 <Box key={entry.name} display="flex" alignItems="center" gap={0.5}>
-                  <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: entry.color }} />
-                  <Typography sx={{ fontSize: '0.6875rem', color: '#6B7280' }}>
+                  <Box sx={{ width: 10, height: 3, borderRadius: 0, backgroundColor: entry.color }} />
+                  <Typography sx={{ fontSize: '0.6875rem', color: '#605E5C' }}>
                     {entry.name} ({entry.value})
                   </Typography>
                 </Box>
@@ -83,24 +84,24 @@ export function ExpirationChart({ data }: ExpirationChartProps) {
       </Grid>
       <Grid item xs={12} md={4}>
         <Card sx={{ height: '100%' }}>
-          <CardContent sx={{ py: 2.5, px: 2.5 }}>
-            <SectionHeader>By Source</SectionHeader>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={sourceData} barSize={28}>
+          <CardContent sx={{ py: 2, px: 2.5 }}>
+            <ChartTitle>By Source</ChartTitle>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={sourceData} barSize={32}>
                 <XAxis
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: '#6B7280' }}
-                  axisLine={false}
+                  tick={{ fontSize: 11, fill: '#605E5C' }}
+                  axisLine={{ stroke: '#EDEBE9' }}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fontSize: 11, fill: '#9CA3AF' }}
+                  tick={{ fontSize: 11, fill: '#A19F9D' }}
                   axisLine={false}
                   tickLine={false}
-                  width={30}
+                  width={35}
                 />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#111827" radius={[6, 6, 0, 0]} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(0,120,212,0.06)' }} />
+                <Bar dataKey="count" fill="#0078D4" radius={[2, 2, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -108,26 +109,26 @@ export function ExpirationChart({ data }: ExpirationChartProps) {
       </Grid>
       <Grid item xs={12} md={4}>
         <Card sx={{ height: '100%' }}>
-          <CardContent sx={{ py: 2.5, px: 2.5 }}>
-            <SectionHeader>By Type</SectionHeader>
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={typeData} layout="vertical" barSize={20}>
+          <CardContent sx={{ py: 2, px: 2.5 }}>
+            <ChartTitle>By Type</ChartTitle>
+            <ResponsiveContainer width="100%" height={240}>
+              <BarChart data={typeData} layout="vertical" barSize={18}>
                 <XAxis
                   type="number"
-                  tick={{ fontSize: 11, fill: '#9CA3AF' }}
-                  axisLine={false}
+                  tick={{ fontSize: 11, fill: '#A19F9D' }}
+                  axisLine={{ stroke: '#EDEBE9' }}
                   tickLine={false}
                 />
                 <YAxis
                   type="category"
                   dataKey="name"
-                  tick={{ fontSize: 11, fill: '#6B7280' }}
+                  tick={{ fontSize: 11, fill: '#605E5C' }}
                   axisLine={false}
                   tickLine={false}
-                  width={80}
+                  width={85}
                 />
-                <Tooltip contentStyle={tooltipStyle} />
-                <Bar dataKey="count" fill="#3B82F6" radius={[0, 6, 6, 0]} />
+                <Tooltip contentStyle={tooltipStyle} cursor={{ fill: 'rgba(0,120,212,0.06)' }} />
+                <Bar dataKey="count" fill="#004578" radius={[0, 2, 2, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>

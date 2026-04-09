@@ -12,12 +12,13 @@ export const ROUTES = {
 } as const;
 
 export const STATUS_COLORS: Record<string, string> = {
-  expired: '#DC2626',
-  critical: '#DC2626',
-  warning: '#D97706',
-  notice: '#0284C7',
-  healthy: '#059669',
-  no_expiry: '#9CA3AF',
+  expired: '#D13438',
+  critical: '#D83B01',
+  warning: '#F7630C',
+  notice: '#0078D4',
+  healthy: '#107C10',
+  no_expiry: '#8A8886',
+  unknown: '#8A8886',
 };
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -27,6 +28,7 @@ export const STATUS_LABELS: Record<string, string> = {
   notice: 'Notice',
   healthy: 'Healthy',
   no_expiry: 'No Expiry',
+  unknown: 'Unknown',
 };
 
 export const SOURCE_LABELS: Record<string, string> = {
@@ -44,12 +46,12 @@ export const ITEM_TYPE_LABELS: Record<string, string> = {
 };
 
 export const ROTATION_STATE_COLORS: Record<string, string> = {
-  staged: '#0284C7',
-  notified: '#D97706',
-  activated: '#059669',
-  completed: '#9CA3AF',
-  cancelled: '#6B7280',
-  failed: '#DC2626',
+  staged: '#0078D4',
+  notified: '#F7630C',
+  activated: '#107C10',
+  completed: '#8A8886',
+  cancelled: '#605E5C',
+  failed: '#D13438',
 };
 
 export const ROTATION_STATE_LABELS: Record<string, string> = {

@@ -1,6 +1,9 @@
 import { useState } from 'react';
-import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Button } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Button, Breadcrumbs, Link, Divider } from '@mui/material';
 import AddIcon from '@mui/icons-material/AddOutlined';
+import RefreshIcon from '@mui/icons-material/RefreshOutlined';
+import HomeIcon from '@mui/icons-material/HomeOutlined';
+import VpnKeyIcon from '@mui/icons-material/VpnKeyOutlined';
 import {
   useKeyVaultItems, useSubscriptions, useVaults,
   useCreateKeyVaultItem, useUpdateKeyVaultItem, useDeleteKeyVaultItem,
@@ -17,7 +20,6 @@ import { StatusBadge } from '../components/common/StatusBadge';
 import { formatDate, formatDaysUntilExpiration } from '../utils/formatters';
 import { ITEM_TYPE_LABELS } from '../utils/constants';
 
-// camelCase (cosmos doc) → snake_case (API) for update payloads
 const FIELD_MAP: Record<string, string> = {
   itemName: 'item_name', itemType: 'item_type', vaultName: 'vault_name',
   vaultUri: 'vault_uri', subscriptionId: 'subscription_id',
@@ -42,7 +44,7 @@ export function KeyVaultItemsPage() {
 
   const { data: subscriptions } = useSubscriptions();
   const { data: vaults } = useVaults(subscription || undefined);
-  const { data, isLoading } = useKeyVaultItems({
+  const { data, isLoading, refetch } = useKeyVaultItems({
     search: search || undefined,
     status: status || undefined,
     subscription: subscription || undefined,
@@ -67,7 +69,10 @@ export function KeyVaultItemsPage() {
       key: 'itemName',
       label: 'Name',
       render: (item: Record<string, unknown>) => (
-        <Typography variant="body2" fontWeight={500}>{item.itemName as string}</Typography>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+          <VpnKeyIcon sx={{ fontSize: '1rem', color: '#0078D4' }} />
+          <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0078D4' }}>{item.itemName as string}</Typography>
+        </Box>
       ),
     },
     {
@@ -85,7 +90,11 @@ export function KeyVaultItemsPage() {
     {
       key: 'daysUntilExpiration',
       label: 'Time Left',
-      render: (item: Record<string, unknown>) => formatDaysUntilExpiration(item.daysUntilExpiration as number | null),
+      render: (item: Record<string, unknown>) => (
+        <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#323130' }}>
+          {formatDaysUntilExpiration(item.daysUntilExpiration as number | null)}
+        </Typography>
+      ),
     },
     {
       key: 'expirationStatus',
@@ -118,34 +127,48 @@ export function KeyVaultItemsPage() {
   };
 
   const handleDelete = (id: string) => {
-    deleteMut.mutate(id, {
-      onSuccess: () => setSelectedItem(null),
-    });
+    deleteMut.mutate(id, { onSuccess: () => setSelectedItem(null) });
   };
 
   const handleCreate = (data: Record<string, unknown>) => {
-    createMut.mutate(data, {
-      onSuccess: () => setCreateOpen(false),
-    });
+    createMut.mutate(data, { onSuccess: () => setCreateOpen(false) });
   };
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3.5}>
-        <Box>
-          <Typography variant="h4">Key Vault Items</Typography>
-          <Typography sx={{ color: '#6B7280', fontSize: '0.8125rem', mt: 0.5 }}>
-            Secrets, keys, and certificates across your Azure Key Vaults.
-          </Typography>
-        </Box>
-        <Box display="flex" gap={1}>
-          {isAdmin && (
-            <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => setCreateOpen(true)}>
-              Add Item
-            </Button>
-          )}
-          <ExportToolbar filters={exportFilters} />
-        </Box>
+      {/* Breadcrumb */}
+      <Breadcrumbs sx={{ mb: 1.5, '& .MuiBreadcrumbs-separator': { color: '#A19F9D' } }}>
+        <Link underline="hover" color="#605E5C" href="/" sx={{ display: 'flex', alignItems: 'center', fontSize: '0.8125rem' }}>
+          <HomeIcon sx={{ fontSize: '0.875rem', mr: 0.5 }} />
+          Home
+        </Link>
+        <Typography sx={{ fontSize: '0.8125rem', color: '#323130', fontWeight: 600 }}>Key Vault Items</Typography>
+      </Breadcrumbs>
+
+      {/* Page header */}
+      <Box mb={2}>
+        <Typography variant="h4">Key Vault Items</Typography>
+        <Typography sx={{ color: '#605E5C', fontSize: '0.8125rem', mt: 0.5 }}>
+          Secrets, keys, and certificates across your Azure Key Vaults.
+        </Typography>
+      </Box>
+
+      {/* Command bar */}
+      <Box sx={{
+        display: 'flex', alignItems: 'center', gap: 1, mb: 1.5,
+        px: 1.5, py: 0.75, backgroundColor: '#FFFFFF', border: '1px solid #EDEBE9', borderRadius: '2px',
+        boxShadow: '0 1.6px 3.6px 0 rgba(0,0,0,.132), 0 0.3px 0.9px 0 rgba(0,0,0,.108)',
+      }}>
+        {isAdmin && (
+          <Button variant="text" startIcon={<AddIcon />} size="small" onClick={() => setCreateOpen(true)}>
+            Add Item
+          </Button>
+        )}
+        <Button variant="text" startIcon={<RefreshIcon />} size="small" onClick={() => refetch()}>
+          Refresh
+        </Button>
+        <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
+        <ExportToolbar filters={exportFilters} />
       </Box>
 
       <ItemFilters
@@ -155,27 +178,27 @@ export function KeyVaultItemsPage() {
         onStatusChange={(v) => { setStatus(v); setPage(1); }}
         extraFilters={
           <>
-            <FormControl size="small" sx={{ minWidth: 180 }}>
-              <InputLabel>Subscription</InputLabel>
-              <Select value={subscription} label="Subscription" onChange={(e) => { setSubscription(e.target.value); setVault(''); setPage(1); }} sx={{ backgroundColor: '#FFFFFF' }}>
+            <FormControl size="small" sx={{ minWidth: 170 }}>
+              <InputLabel sx={{ fontSize: '0.8125rem' }}>Subscription</InputLabel>
+              <Select value={subscription} label="Subscription" onChange={(e) => { setSubscription(e.target.value); setVault(''); setPage(1); }} sx={{ backgroundColor: '#FFFFFF', fontSize: '0.8125rem' }}>
                 <MenuItem value="">All</MenuItem>
                 {subscriptions?.map((s) => (
                   <MenuItem key={s.subscriptionId} value={s.subscriptionId}>{s.subscriptionName}</MenuItem>
                 ))}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 160 }}>
-              <InputLabel>Vault</InputLabel>
-              <Select value={vault} label="Vault" onChange={(e) => { setVault(e.target.value); setPage(1); }} sx={{ backgroundColor: '#FFFFFF' }}>
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel sx={{ fontSize: '0.8125rem' }}>Vault</InputLabel>
+              <Select value={vault} label="Vault" onChange={(e) => { setVault(e.target.value); setPage(1); }} sx={{ backgroundColor: '#FFFFFF', fontSize: '0.8125rem' }}>
                 <MenuItem value="">All</MenuItem>
                 {vaults?.map((v) => (
                   <MenuItem key={v.vaultName} value={v.vaultName}>{v.vaultName}</MenuItem>
                 ))}
               </Select>
             </FormControl>
-            <FormControl size="small" sx={{ minWidth: 130 }}>
-              <InputLabel>Type</InputLabel>
-              <Select value={itemType} label="Type" onChange={(e) => { setItemType(e.target.value); setPage(1); }} sx={{ backgroundColor: '#FFFFFF' }}>
+            <FormControl size="small" sx={{ minWidth: 120 }}>
+              <InputLabel sx={{ fontSize: '0.8125rem' }}>Type</InputLabel>
+              <Select value={itemType} label="Type" onChange={(e) => { setItemType(e.target.value); setPage(1); }} sx={{ backgroundColor: '#FFFFFF', fontSize: '0.8125rem' }}>
                 <MenuItem value="">All</MenuItem>
                 <MenuItem value="secret">Secret</MenuItem>
                 <MenuItem value="key">Key</MenuItem>

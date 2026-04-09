@@ -8,6 +8,7 @@ import {
   Box,
   Divider,
   Typography,
+  Toolbar,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/DashboardOutlined';
 import RadarIcon from '@mui/icons-material/RadarOutlined';
@@ -21,7 +22,7 @@ import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import { useAuth } from '../../auth/useAuth';
 import { ROUTES } from '../../utils/constants';
 
-const DRAWER_WIDTH = 220;
+const DRAWER_WIDTH = 240;
 
 const mainNav = [
   { label: 'Dashboard', path: ROUTES.DASHBOARD, icon: <DashboardIcon /> },
@@ -39,7 +40,7 @@ const adminNav = [
 ];
 
 function NavItem({ label, icon, selected, onClick }: {
-  label: string; path?: string; icon: React.ReactNode; selected: boolean; onClick: () => void;
+  label: string; icon: React.ReactNode; selected: boolean; onClick: () => void;
 }) {
   return (
     <ListItemButton
@@ -48,19 +49,19 @@ function NavItem({ label, icon, selected, onClick }: {
       sx={{
         borderRadius: 0,
         mb: 0,
-        py: 0.875,
+        py: 0.75,
         px: 2,
         borderLeft: selected ? '3px solid #0078D4' : '3px solid transparent',
-        transition: 'all 0.1s ease',
+        transition: 'none',
         '&.Mui-selected': {
-          backgroundColor: '#1E293B',
-          '&:hover': { backgroundColor: '#1E293B' },
+          backgroundColor: '#3B3A39',
+          '&:hover': { backgroundColor: '#3B3A39' },
         },
-        '&:hover': { backgroundColor: 'rgba(255,255,255,0.04)' },
+        '&:hover': { backgroundColor: '#323130' },
       }}
     >
       <ListItemIcon sx={{
-        color: selected ? '#60A5FA' : '#6B7280',
+        color: selected ? '#0078D4' : '#A19F9D',
         minWidth: 32,
         '& .MuiSvgIcon-root': { fontSize: '1.125rem' },
       }}>
@@ -71,8 +72,8 @@ function NavItem({ label, icon, selected, onClick }: {
         sx={{
           '& .MuiTypography-root': {
             fontSize: '0.8125rem',
-            fontWeight: selected ? 500 : 400,
-            color: selected ? '#F9FAFB' : '#9CA3AF',
+            fontWeight: selected ? 600 : 400,
+            color: selected ? '#FFFFFF' : '#D2D0CE',
           },
         }}
       />
@@ -94,32 +95,22 @@ export function Sidebar() {
         '& .MuiDrawer-paper': {
           width: DRAWER_WIDTH,
           boxSizing: 'border-box',
-          backgroundColor: '#111827',
-          borderRight: 'none',
+          backgroundColor: '#252423',
+          borderRight: '1px solid #3B3A39',
           overflow: 'hidden',
         },
       }}
     >
-      {/* Logo area */}
-      <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.25, minHeight: 48 }}>
-        <Box sx={{
-          width: 28, height: 28, borderRadius: '6px',
-          background: 'linear-gradient(135deg, #0078D4 0%, #106EBE 100%)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <VpnKeyIcon sx={{ color: '#fff', fontSize: '0.875rem' }} />
-        </Box>
-        <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#F9FAFB', letterSpacing: '-0.01em' }}>
-          Secret Manager
-        </Typography>
-      </Box>
-
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
+      {/* Offset for the top bar */}
+      <Toolbar variant="dense" sx={{ minHeight: 40 }} />
 
       {/* Main nav */}
-      <Box sx={{ pt: 1 }}>
-        <Typography sx={{ px: 2, py: 0.75, fontSize: '0.625rem', fontWeight: 600, color: '#4B5563', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-          Overview
+      <Box sx={{ pt: 0.5 }}>
+        <Typography sx={{
+          px: 2, py: 0.75, fontSize: '0.6875rem', fontWeight: 600,
+          color: '#A19F9D', letterSpacing: '0.04em', textTransform: 'uppercase',
+        }}>
+          Monitor
         </Typography>
         <List disablePadding>
           {mainNav.map((item) => (
@@ -133,11 +124,16 @@ export function Sidebar() {
         </List>
       </Box>
 
+      <Divider sx={{ borderColor: '#3B3A39', my: 0.5 }} />
+
       {/* Admin nav */}
       {user?.isAdmin && (
-        <Box sx={{ pt: 1.5 }}>
-          <Typography sx={{ px: 2, py: 0.75, fontSize: '0.625rem', fontWeight: 600, color: '#4B5563', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
-            Management
+        <Box>
+          <Typography sx={{
+            px: 2, py: 0.75, fontSize: '0.6875rem', fontWeight: 600,
+            color: '#A19F9D', letterSpacing: '0.04em', textTransform: 'uppercase',
+          }}>
+            Manage
           </Typography>
           <List disablePadding>
             {adminNav.map((item) => (

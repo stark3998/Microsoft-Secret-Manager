@@ -1,6 +1,6 @@
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, TablePagination, Typography,
+  Paper, TablePagination, Typography, Box,
 } from '@mui/material';
 import { StatusBadge } from '../common/StatusBadge';
 import { formatDate, formatDaysUntilExpiration } from '../../utils/formatters';
@@ -26,7 +26,7 @@ interface ItemsTableProps {
 
 const defaultColumns: Column[] = [
   { key: 'itemName', label: 'Name', render: (item) => (
-    <Typography sx={{ fontSize: '0.8125rem', fontWeight: 500, color: '#111827' }}>
+    <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#0078D4' }}>
       {(item.itemName || item.appDisplayName || 'Unknown') as string}
     </Typography>
   )},
@@ -50,7 +50,16 @@ export function ItemsTable({
   onRowClick,
 }: ItemsTableProps) {
   return (
-    <Paper sx={{ overflow: 'hidden', borderRadius: '12px' }}>
+    <Paper sx={{ overflow: 'hidden', borderRadius: '2px' }}>
+      {/* Resource count bar */}
+      <Box sx={{
+        px: 1.5, py: 0.75, backgroundColor: '#FAF9F8', borderBottom: '1px solid #EDEBE9',
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+      }}>
+        <Typography sx={{ fontSize: '0.75rem', color: '#605E5C' }}>
+          {total.toLocaleString()} resource{total !== 1 ? 's' : ''}
+        </Typography>
+      </Box>
       <TableContainer>
         <Table size="small">
           <TableHead>
@@ -68,7 +77,7 @@ export function ItemsTable({
                 onClick={() => onRowClick?.(item)}
                 sx={onRowClick ? {
                   cursor: 'pointer',
-                  '&:hover': { backgroundColor: '#F9FAFB' },
+                  '&:hover': { backgroundColor: '#F3F2F1' },
                 } : undefined}
               >
                 {columns.map((col) => (
@@ -81,7 +90,7 @@ export function ItemsTable({
             {items.length === 0 && !isLoading && (
               <TableRow>
                 <TableCell colSpan={columns.length} align="center" sx={{ py: 8 }}>
-                  <Typography sx={{ color: '#9CA3AF', fontSize: '0.8125rem' }}>No items found</Typography>
+                  <Typography sx={{ color: '#A19F9D', fontSize: '0.8125rem' }}>No items found</Typography>
                 </TableCell>
               </TableRow>
             )}
@@ -97,9 +106,9 @@ export function ItemsTable({
         onRowsPerPageChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
         rowsPerPageOptions={[10, 25, 50, 100]}
         sx={{
-          borderTop: '1px solid #E5E7EB',
+          borderTop: '1px solid #EDEBE9',
           '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
-            fontSize: '0.75rem', color: '#6B7280',
+            fontSize: '0.75rem', color: '#605E5C',
           },
           '& .MuiTablePagination-select': {
             fontSize: '0.75rem',
