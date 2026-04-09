@@ -39,7 +39,13 @@ async def count_items(
     async for item in container.query_items(**kwargs):
         results.append(item)
 
-    if results and "$1" in results[0]:
+    if not results:
+        return 0
+    # SELECT VALUE COUNT(1) returns a raw integer
+    if isinstance(results[0], (int, float)):
+        return int(results[0])
+    # SELECT COUNT(1) returns {"$1": N}
+    if isinstance(results[0], dict) and "$1" in results[0]:
         return results[0]["$1"]
     return 0
 
