@@ -14,9 +14,12 @@ export function DashboardPage() {
 
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        Dashboard
-      </Typography>
+      <Box mb={3.5}>
+        <Typography variant="h4">Dashboard</Typography>
+        <Typography sx={{ color: '#6B7280', fontSize: '0.8125rem', mt: 0.5 }}>
+          Overview of all tracked credentials and their expiration status.
+        </Typography>
+      </Box>
 
       {overview && (
         <Box mb={3}>
@@ -31,14 +34,14 @@ export function DashboardPage() {
       )}
 
       <Grid container spacing={2}>
-        <Grid item xs={12} md={8}>
+        <Grid item xs={12} lg={8}>
           {timelineLoading ? (
             <LoadingSpinner />
           ) : (
             timeline && <TimelineView items={timeline.items} />
           )}
         </Grid>
-        <Grid item xs={12} md={4}>
+        <Grid item xs={12} lg={4}>
           <RecentActivity />
         </Grid>
       </Grid>

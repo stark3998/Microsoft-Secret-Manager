@@ -8,7 +8,6 @@ from azure.keyvault.certificates import (
     CertificatePolicy,
     CertificateContentType,
     KeyType as KvKeyType,
-    KeySize,
 )
 from azure.keyvault.secrets import SecretClient
 from cryptography import x509

@@ -93,6 +93,22 @@ export interface EnterpriseAppItem {
   lastScannedAt: string;
 }
 
+export interface AppConfig {
+  storageMode: string;
+  azureTenantId: string;
+  azureClientId: string;
+  azureClientSecret: string;
+  azureEnvironment: string;
+  managedIdentityClientId: string;
+  msalClientId: string;
+  cosmosEndpoint: string;
+  cosmosDatabase: string;
+  setupCompletedAt?: string;
+  updatedBy?: string;
+  updatedAt?: string;
+  requiresRestart?: boolean;
+}
+
 export interface ThresholdTier {
   name: string;
   daysBeforeExpiry: number;

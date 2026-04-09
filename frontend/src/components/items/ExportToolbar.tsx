@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Button, Menu, MenuItem, ListItemIcon, ListItemText, CircularProgress } from '@mui/material';
-import FileDownloadIcon from '@mui/icons-material/FileDownload';
-import TableChartIcon from '@mui/icons-material/TableChart';
-import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import FileDownloadIcon from '@mui/icons-material/FileDownloadOutlined';
+import TableChartIcon from '@mui/icons-material/TableChartOutlined';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdfOutlined';
 import { exportCsv, exportPdf } from '../../api/export';
 
 interface ExportToolbarProps {
@@ -38,21 +38,26 @@ export function ExportToolbar({ filters }: ExportToolbarProps) {
     <>
       <Button
         variant="outlined"
-        startIcon={loading ? <CircularProgress size={18} /> : <FileDownloadIcon />}
+        startIcon={loading ? <CircularProgress size={14} sx={{ color: '#9CA3AF' }} /> : <FileDownloadIcon />}
         onClick={(e) => setAnchorEl(e.currentTarget)}
         disabled={loading}
         size="small"
       >
         Export
       </Button>
-      <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={() => setAnchorEl(null)}>
-        <MenuItem onClick={() => handleExport('csv')}>
-          <ListItemIcon><TableChartIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>Export as CSV</ListItemText>
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        slotProps={{ paper: { sx: { mt: 0.5, minWidth: 160, border: '1px solid #E5E7EB', borderRadius: '6px', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' } } }}
+      >
+        <MenuItem onClick={() => handleExport('csv')} sx={{ fontSize: '0.8125rem', py: 1 }}>
+          <ListItemIcon><TableChartIcon sx={{ fontSize: '1rem', color: '#6B7280' }} /></ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.8125rem' }}>CSV</ListItemText>
         </MenuItem>
-        <MenuItem onClick={() => handleExport('pdf')}>
-          <ListItemIcon><PictureAsPdfIcon fontSize="small" /></ListItemIcon>
-          <ListItemText>Export as PDF</ListItemText>
+        <MenuItem onClick={() => handleExport('pdf')} sx={{ fontSize: '0.8125rem', py: 1 }}>
+          <ListItemIcon><PictureAsPdfIcon sx={{ fontSize: '1rem', color: '#6B7280' }} /></ListItemIcon>
+          <ListItemText primaryTypographyProps={{ fontSize: '0.8125rem' }}>PDF</ListItemText>
         </MenuItem>
       </Menu>
     </>

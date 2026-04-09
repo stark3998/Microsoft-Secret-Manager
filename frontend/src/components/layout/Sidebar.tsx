@@ -5,33 +5,78 @@ import {
   ListItemButton,
   ListItemIcon,
   ListItemText,
-  Toolbar,
-  Typography,
   Box,
   Divider,
+  Typography,
 } from '@mui/material';
-import DashboardIcon from '@mui/icons-material/Dashboard';
-import VpnKeyIcon from '@mui/icons-material/VpnKey';
-import AppRegistrationIcon from '@mui/icons-material/AppRegistration';
-import BusinessIcon from '@mui/icons-material/Business';
-import SecurityIcon from '@mui/icons-material/Security';
-import AutorenewIcon from '@mui/icons-material/Autorenew';
-import WebhookIcon from '@mui/icons-material/Webhook';
-import SettingsIcon from '@mui/icons-material/Settings';
+import DashboardIcon from '@mui/icons-material/DashboardOutlined';
+import VpnKeyIcon from '@mui/icons-material/VpnKeyOutlined';
+import AppRegistrationIcon from '@mui/icons-material/AppRegistrationOutlined';
+import BusinessIcon from '@mui/icons-material/BusinessOutlined';
+import SecurityIcon from '@mui/icons-material/SecurityOutlined';
+import AutorenewIcon from '@mui/icons-material/AutorenewOutlined';
+import WebhookIcon from '@mui/icons-material/WebhookOutlined';
+import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import { useAuth } from '../../auth/useAuth';
 import { ROUTES } from '../../utils/constants';
 
-const DRAWER_WIDTH = 260;
+const DRAWER_WIDTH = 220;
 
-const navItems = [
+const mainNav = [
   { label: 'Dashboard', path: ROUTES.DASHBOARD, icon: <DashboardIcon /> },
   { label: 'Key Vault Items', path: ROUTES.KEYVAULT_ITEMS, icon: <VpnKeyIcon /> },
   { label: 'App Registrations', path: ROUTES.APP_REGISTRATIONS, icon: <AppRegistrationIcon /> },
   { label: 'Enterprise Apps', path: ROUTES.ENTERPRISE_APPS, icon: <BusinessIcon /> },
+];
+
+const adminNav = [
   { label: 'Certificates', path: ROUTES.CERTIFICATES, icon: <SecurityIcon /> },
   { label: 'SAML Rotation', path: ROUTES.SAML_ROTATION, icon: <AutorenewIcon /> },
   { label: 'Event Grid', path: ROUTES.EVENTGRID_CONFIG, icon: <WebhookIcon /> },
+  { label: 'Settings', path: ROUTES.SETTINGS, icon: <SettingsIcon /> },
 ];
+
+function NavItem({ label, icon, selected, onClick }: {
+  label: string; path?: string; icon: React.ReactNode; selected: boolean; onClick: () => void;
+}) {
+  return (
+    <ListItemButton
+      selected={selected}
+      onClick={onClick}
+      sx={{
+        borderRadius: 0,
+        mb: 0,
+        py: 0.875,
+        px: 2,
+        borderLeft: selected ? '3px solid #0078D4' : '3px solid transparent',
+        transition: 'all 0.1s ease',
+        '&.Mui-selected': {
+          backgroundColor: '#1E293B',
+          '&:hover': { backgroundColor: '#1E293B' },
+        },
+        '&:hover': { backgroundColor: 'rgba(255,255,255,0.04)' },
+      }}
+    >
+      <ListItemIcon sx={{
+        color: selected ? '#60A5FA' : '#6B7280',
+        minWidth: 32,
+        '& .MuiSvgIcon-root': { fontSize: '1.125rem' },
+      }}>
+        {icon}
+      </ListItemIcon>
+      <ListItemText
+        primary={label}
+        sx={{
+          '& .MuiTypography-root': {
+            fontSize: '0.8125rem',
+            fontWeight: selected ? 500 : 400,
+            color: selected ? '#F9FAFB' : '#9CA3AF',
+          },
+        }}
+      />
+    </ListItemButton>
+  );
+}
 
 export function Sidebar() {
   const location = useLocation();
@@ -47,61 +92,62 @@ export function Sidebar() {
         '& .MuiDrawer-paper': {
           width: DRAWER_WIDTH,
           boxSizing: 'border-box',
-          backgroundColor: '#1a1a2e',
-          color: '#fff',
+          backgroundColor: '#111827',
+          borderRight: 'none',
+          overflow: 'hidden',
         },
       }}
     >
-      <Toolbar>
-        <Box display="flex" alignItems="center" gap={1}>
-          <VpnKeyIcon sx={{ color: '#4fc3f7' }} />
-          <Typography variant="h6" noWrap sx={{ fontWeight: 700, color: '#fff' }}>
-            Secret Manager
-          </Typography>
+      {/* Logo area */}
+      <Box sx={{ px: 2, py: 1.5, display: 'flex', alignItems: 'center', gap: 1.25, minHeight: 48 }}>
+        <Box sx={{
+          width: 28, height: 28, borderRadius: '6px',
+          background: 'linear-gradient(135deg, #0078D4 0%, #106EBE 100%)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+        }}>
+          <VpnKeyIcon sx={{ color: '#fff', fontSize: '0.875rem' }} />
         </Box>
-      </Toolbar>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-      <List sx={{ px: 1 }}>
-        {navItems.map((item) => (
-          <ListItemButton
-            key={item.path}
-            selected={location.pathname === item.path}
-            onClick={() => navigate(item.path)}
-            sx={{
-              borderRadius: 1,
-              mb: 0.5,
-              '&.Mui-selected': {
-                backgroundColor: 'rgba(79, 195, 247, 0.15)',
-                '&:hover': { backgroundColor: 'rgba(79, 195, 247, 0.25)' },
-              },
-              '&:hover': { backgroundColor: 'rgba(255,255,255,0.08)' },
-            }}
-          >
-            <ListItemIcon sx={{ color: location.pathname === item.path ? '#4fc3f7' : 'rgba(255,255,255,0.7)', minWidth: 40 }}>
-              {item.icon}
-            </ListItemIcon>
-            <ListItemText primary={item.label} sx={{ '& .MuiTypography-root': { fontSize: '0.9rem' } }} />
-          </ListItemButton>
-        ))}
-      </List>
-      <Divider sx={{ borderColor: 'rgba(255,255,255,0.1)' }} />
-      {user?.isAdmin && (
-        <List sx={{ px: 1 }}>
-          <ListItemButton
-            selected={location.pathname === ROUTES.SETTINGS}
-            onClick={() => navigate(ROUTES.SETTINGS)}
-            sx={{
-              borderRadius: 1,
-              '&.Mui-selected': { backgroundColor: 'rgba(79, 195, 247, 0.15)' },
-              '&:hover': { backgroundColor: 'rgba(255,255,255,0.08)' },
-            }}
-          >
-            <ListItemIcon sx={{ color: location.pathname === ROUTES.SETTINGS ? '#4fc3f7' : 'rgba(255,255,255,0.7)', minWidth: 40 }}>
-              <SettingsIcon />
-            </ListItemIcon>
-            <ListItemText primary="Settings" sx={{ '& .MuiTypography-root': { fontSize: '0.9rem' } }} />
-          </ListItemButton>
+        <Typography sx={{ fontSize: '0.8125rem', fontWeight: 600, color: '#F9FAFB', letterSpacing: '-0.01em' }}>
+          Secret Manager
+        </Typography>
+      </Box>
+
+      <Divider sx={{ borderColor: 'rgba(255,255,255,0.06)' }} />
+
+      {/* Main nav */}
+      <Box sx={{ pt: 1 }}>
+        <Typography sx={{ px: 2, py: 0.75, fontSize: '0.625rem', fontWeight: 600, color: '#4B5563', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+          Overview
+        </Typography>
+        <List disablePadding>
+          {mainNav.map((item) => (
+            <NavItem
+              key={item.path}
+              {...item}
+              selected={location.pathname === item.path}
+              onClick={() => navigate(item.path)}
+            />
+          ))}
         </List>
+      </Box>
+
+      {/* Admin nav */}
+      {user?.isAdmin && (
+        <Box sx={{ pt: 1.5 }}>
+          <Typography sx={{ px: 2, py: 0.75, fontSize: '0.625rem', fontWeight: 600, color: '#4B5563', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+            Management
+          </Typography>
+          <List disablePadding>
+            {adminNav.map((item) => (
+              <NavItem
+                key={item.path}
+                {...item}
+                selected={location.pathname === item.path}
+                onClick={() => navigate(item.path)}
+              />
+            ))}
+          </List>
+        </Box>
       )}
     </Drawer>
   );

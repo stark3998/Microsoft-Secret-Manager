@@ -1,18 +1,37 @@
 import { useState } from 'react';
-import { Box, Typography } from '@mui/material';
-import { useAppRegistrations } from '../hooks/useItems';
+import { Box, Typography, Button } from '@mui/material';
+import AddIcon from '@mui/icons-material/AddOutlined';
+import {
+  useAppRegistrations,
+  useCreateAppRegistration, useUpdateAppRegistration, useDeleteAppRegistration,
+} from '../hooks/useItems';
+import { useAuth } from '../auth/useAuth';
 import { ItemFilters } from '../components/items/ItemFilters';
 import { ItemsTable } from '../components/items/ItemsTable';
+import { CredentialDetailDialog, APP_REGISTRATION_FIELDS } from '../components/items/CredentialDetailDialog';
+import { CreateCredentialDialog } from '../components/items/CreateCredentialDialog';
 import { LoadingSpinner } from '../components/common/LoadingSpinner';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { formatDate, formatDaysUntilExpiration } from '../utils/formatters';
 import { ITEM_TYPE_LABELS } from '../utils/constants';
+
+const FIELD_MAP: Record<string, string> = {
+  appDisplayName: 'app_display_name', itemType: 'item_type',
+  appObjectId: 'app_object_id', appId: 'app_id',
+  credentialId: 'credential_id', credentialDisplayName: 'credential_display_name',
+  expiresOn: 'expires_on', thumbprint: 'thumbprint', subject: 'subject',
+};
 
 export function AppRegistrationsPage() {
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [selectedItem, setSelectedItem] = useState<Record<string, unknown> | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const { user } = useAuth();
+  const isAdmin = user?.isAdmin ?? false;
 
   const { data, isLoading } = useAppRegistrations({
     search: search || undefined,
@@ -20,6 +39,10 @@ export function AppRegistrationsPage() {
     page,
     pageSize,
   });
+
+  const createMut = useCreateAppRegistration();
+  const updateMut = useUpdateAppRegistration();
+  const deleteMut = useDeleteAppRegistration();
 
   const columns = [
     {
@@ -32,7 +55,7 @@ export function AppRegistrationsPage() {
     {
       key: 'itemType',
       label: 'Credential Type',
-      render: (item: Record<string, unknown>) => ITEM_TYPE_LABELS[item.itemType as string] || item.itemType,
+      render: (item: Record<string, unknown>) => ITEM_TYPE_LABELS[item.itemType as string] || (item.itemType as string),
     },
     { key: 'credentialDisplayName', label: 'Description' },
     { key: 'appId', label: 'Client ID' },
@@ -53,11 +76,39 @@ export function AppRegistrationsPage() {
     },
   ];
 
+  const handleSave = (id: string, updates: Record<string, unknown>) => {
+    const apiUpdates: Record<string, unknown> = {};
+    for (const [camel, val] of Object.entries(updates)) {
+      apiUpdates[FIELD_MAP[camel] || camel] = val;
+    }
+    updateMut.mutate({ id, body: apiUpdates }, {
+      onSuccess: () => setSelectedItem(null),
+    });
+  };
+
+  const handleDelete = (id: string) => {
+    deleteMut.mutate(id, { onSuccess: () => setSelectedItem(null) });
+  };
+
+  const handleCreate = (data: Record<string, unknown>) => {
+    createMut.mutate(data, { onSuccess: () => setCreateOpen(false) });
+  };
+
   return (
     <Box>
-      <Typography variant="h4" fontWeight={700} gutterBottom>
-        App Registrations
-      </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3.5}>
+        <Box>
+          <Typography variant="h4">App Registrations</Typography>
+          <Typography sx={{ color: '#6B7280', fontSize: '0.8125rem', mt: 0.5 }}>
+            Client secrets and certificates for Entra ID app registrations.
+          </Typography>
+        </Box>
+        {isAdmin && (
+          <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => setCreateOpen(true)}>
+            Add Credential
+          </Button>
+        )}
+      </Box>
 
       <ItemFilters
         search={search}
@@ -77,8 +128,30 @@ export function AppRegistrationsPage() {
           pageSize={pageSize}
           onPageChange={setPage}
           onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
+          onRowClick={setSelectedItem}
         />
       )}
+
+      <CredentialDetailDialog
+        open={!!selectedItem}
+        item={selectedItem}
+        onClose={() => setSelectedItem(null)}
+        onSave={handleSave}
+        onDelete={handleDelete}
+        isAdmin={isAdmin}
+        fields={APP_REGISTRATION_FIELDS}
+        title={selectedItem?.appDisplayName as string || 'App Registration'}
+        saving={updateMut.isPending}
+        deleting={deleteMut.isPending}
+      />
+
+      <CreateCredentialDialog
+        open={createOpen}
+        source="app_registration"
+        onClose={() => setCreateOpen(false)}
+        onCreate={handleCreate}
+        saving={createMut.isPending}
+      />
     </Box>
   );
 }

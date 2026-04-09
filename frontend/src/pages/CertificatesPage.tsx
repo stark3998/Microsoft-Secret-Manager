@@ -3,14 +3,13 @@ import {
   Box, Typography, Card, CardContent, Grid, TextField, Button,
   Select, MenuItem, FormControl, InputLabel, Chip, Alert, Snackbar,
   Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody,
-  TableCell, TableContainer, TableHead, TableRow, Paper, IconButton,
-  Tooltip, CircularProgress,
+  TableCell, TableContainer, TableHead, TableRow, Paper, Tooltip,
+  CircularProgress, Divider, FormControlLabel, Checkbox,
 } from '@mui/material';
-import AddIcon from '@mui/icons-material/Add';
-import AutorenewIcon from '@mui/icons-material/Autorenew';
-import BlockIcon from '@mui/icons-material/Block';
-import RefreshIcon from '@mui/icons-material/Refresh';
-import DnsIcon from '@mui/icons-material/Dns';
+import AddIcon from '@mui/icons-material/AddOutlined';
+import AutorenewIcon from '@mui/icons-material/AutorenewOutlined';
+import BlockIcon from '@mui/icons-material/BlockOutlined';
+import RefreshIcon from '@mui/icons-material/RefreshOutlined';
 import {
   useDnsProviders,
   useDnsZones,
@@ -19,6 +18,14 @@ import {
   useRevokeCertificate,
   useCheckRenewals,
 } from '../hooks/useCertificates';
+
+function SectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <Typography sx={{ fontSize: '0.6875rem', fontWeight: 600, color: '#9CA3AF', letterSpacing: '0.04em', textTransform: 'uppercase', mb: 1.5 }}>
+      {children}
+    </Typography>
+  );
+}
 
 export function CertificatesPage() {
   const { data: providersData } = useDnsProviders();
@@ -33,17 +40,12 @@ export function CertificatesPage() {
   const [revokeOpen, setRevokeOpen] = useState(false);
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
-  // Issue form state
   const [issueDomains, setIssueDomains] = useState('');
   const [issueName, setIssueName] = useState('');
   const [issueKeyType, setIssueKeyType] = useState('ec256');
   const [issueDnsProvider, setIssueDnsProvider] = useState('');
-
-  // Renew form state
   const [renewName, setRenewName] = useState('');
   const [renewForce, setRenewForce] = useState(false);
-
-  // Revoke form state
   const [revokeName, setRevokeName] = useState('');
   const [revokeReason, setRevokeReason] = useState(0);
 
@@ -55,9 +57,7 @@ export function CertificatesPage() {
     if (!domains.length || !issueName) return;
     try {
       await issueMutation.mutateAsync({
-        domains,
-        certificate_name: issueName,
-        key_type: issueKeyType,
+        domains, certificate_name: issueName, key_type: issueKeyType,
         dns_provider: issueDnsProvider || undefined,
       });
       setSnackbar({ open: true, message: 'Certificate issued successfully', severity: 'success' });
@@ -65,25 +65,18 @@ export function CertificatesPage() {
       setIssueDomains('');
       setIssueName('');
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Issuance failed';
-      setSnackbar({ open: true, message: msg, severity: 'error' });
+      setSnackbar({ open: true, message: e instanceof Error ? e.message : 'Issuance failed', severity: 'error' });
     }
   };
 
   const handleRenew = async () => {
     if (!renewName) return;
     try {
-      const result = await renewMutation.mutateAsync({
-        certificate_name: renewName,
-        key_type: 'ec256',
-        force: renewForce,
-      });
-      const msg = result.status === 'not_due' ? 'Renewal not yet required' : 'Certificate renewed';
-      setSnackbar({ open: true, message: msg, severity: 'success' });
+      const result = await renewMutation.mutateAsync({ certificate_name: renewName, key_type: 'ec256', force: renewForce });
+      setSnackbar({ open: true, message: result.status === 'not_due' ? 'Renewal not yet required' : 'Certificate renewed', severity: 'success' });
       setRenewOpen(false);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Renewal failed';
-      setSnackbar({ open: true, message: msg, severity: 'error' });
+      setSnackbar({ open: true, message: e instanceof Error ? e.message : 'Renewal failed', severity: 'error' });
     }
   };
 
@@ -94,8 +87,7 @@ export function CertificatesPage() {
       setSnackbar({ open: true, message: 'Certificate revoked', severity: 'success' });
       setRevokeOpen(false);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Revocation failed';
-      setSnackbar({ open: true, message: msg, severity: 'error' });
+      setSnackbar({ open: true, message: e instanceof Error ? e.message : 'Revocation failed', severity: 'error' });
     }
   };
 
@@ -108,31 +100,34 @@ export function CertificatesPage() {
         severity: result.errors > 0 ? 'error' : 'success',
       });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Check failed';
-      setSnackbar({ open: true, message: msg, severity: 'error' });
+      setSnackbar({ open: true, message: e instanceof Error ? e.message : 'Check failed', severity: 'error' });
     }
   };
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" fontWeight={700}>
-          Certificate Management
-        </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3.5}>
+        <Box>
+          <Typography variant="h4">Certificate Management</Typography>
+          <Typography sx={{ color: '#6B7280', fontSize: '0.8125rem', mt: 0.5 }}>
+            Issue, renew, and revoke ACME certificates via Let's Encrypt.
+          </Typography>
+        </Box>
         <Box display="flex" gap={1}>
-          <Button variant="contained" startIcon={<AddIcon />} onClick={() => setIssueOpen(true)}>
+          <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => setIssueOpen(true)}>
             Issue Certificate
           </Button>
-          <Button variant="outlined" startIcon={<AutorenewIcon />} onClick={() => setRenewOpen(true)}>
+          <Button variant="outlined" startIcon={<AutorenewIcon />} size="small" onClick={() => setRenewOpen(true)}>
             Renew
           </Button>
-          <Button variant="outlined" color="error" startIcon={<BlockIcon />} onClick={() => setRevokeOpen(true)}>
+          <Button variant="outlined" color="error" startIcon={<BlockIcon />} size="small" onClick={() => setRevokeOpen(true)}>
             Revoke
           </Button>
           <Tooltip title="Check all managed certificates for renewal">
             <Button
               variant="outlined"
-              startIcon={checkRenewalsMutation.isPending ? <CircularProgress size={18} /> : <RefreshIcon />}
+              size="small"
+              startIcon={checkRenewalsMutation.isPending ? <CircularProgress size={14} sx={{ color: '#9CA3AF' }} /> : <RefreshIcon />}
               onClick={handleCheckRenewals}
               disabled={checkRenewalsMutation.isPending}
             >
@@ -142,39 +137,36 @@ export function CertificatesPage() {
         </Box>
       </Box>
 
-      <Grid container spacing={3}>
-        {/* DNS Providers */}
+      <Grid container spacing={2}>
         <Grid item xs={12} md={4}>
           <Card>
-            <CardContent>
-              <Box display="flex" alignItems="center" gap={1} mb={2}>
-                <DnsIcon color="primary" />
-                <Typography variant="h6">DNS Providers</Typography>
-              </Box>
+            <CardContent sx={{ p: 2.5 }}>
+              <SectionLabel>DNS Providers</SectionLabel>
               {providers.length === 0 ? (
-                <Typography color="text.secondary" variant="body2">
-                  No DNS providers configured. Configure in Settings.
+                <Typography sx={{ color: '#9CA3AF', fontSize: '0.8125rem' }}>
+                  No DNS providers configured.
                 </Typography>
               ) : (
-                providers.map((p: { key: string; name: string }) => (
-                  <Chip key={p.key} label={p.name} sx={{ mr: 1, mb: 1 }} variant="outlined" />
-                ))
+                <Box display="flex" gap={0.75} flexWrap="wrap">
+                  {providers.map((p: { key: string; name: string }) => (
+                    <Chip key={p.key} label={p.name} size="small" variant="outlined" />
+                  ))}
+                </Box>
               )}
             </CardContent>
           </Card>
         </Grid>
 
-        {/* DNS Zones */}
         <Grid item xs={12} md={8}>
           <Card>
-            <CardContent>
-              <Typography variant="h6" gutterBottom>DNS Zones</Typography>
+            <CardContent sx={{ p: 2.5 }}>
+              <SectionLabel>DNS Zones</SectionLabel>
               {zones.length === 0 ? (
-                <Typography color="text.secondary" variant="body2">
+                <Typography sx={{ color: '#9CA3AF', fontSize: '0.8125rem' }}>
                   No DNS zones found.
                 </Typography>
               ) : (
-                <TableContainer component={Paper} variant="outlined">
+                <TableContainer component={Paper} variant="outlined" sx={{ border: '1px solid #F3F4F6' }}>
                   <Table size="small">
                     <TableHead>
                       <TableRow>
@@ -185,7 +177,7 @@ export function CertificatesPage() {
                     <TableBody>
                       {zones.map((z: { zone: string | null; provider: string; provider_name: string; error?: string }, i: number) => (
                         <TableRow key={i}>
-                          <TableCell>{z.zone || <em style={{ color: '#999' }}>{z.error}</em>}</TableCell>
+                          <TableCell>{z.zone || <span style={{ color: '#9CA3AF', fontStyle: 'italic' }}>{z.error}</span>}</TableCell>
                           <TableCell>
                             <Chip label={z.provider_name} size="small" variant="outlined" />
                           </TableCell>
@@ -202,109 +194,88 @@ export function CertificatesPage() {
 
       {/* Issue Dialog */}
       <Dialog open={issueOpen} onClose={() => setIssueOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Issue New Certificate</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Certificate Name"
-            value={issueName}
-            onChange={(e) => setIssueName(e.target.value)}
-            fullWidth
-            margin="normal"
-            helperText="Name for Key Vault storage"
-          />
-          <TextField
-            label="Domains"
-            value={issueDomains}
-            onChange={(e) => setIssueDomains(e.target.value)}
-            fullWidth
-            margin="normal"
-            helperText="Comma-separated (first = CN, rest = SANs)"
-          />
-          <FormControl fullWidth margin="normal">
-            <InputLabel>Key Type</InputLabel>
-            <Select value={issueKeyType} onChange={(e) => setIssueKeyType(e.target.value)} label="Key Type">
-              <MenuItem value="ec256">EC P-256</MenuItem>
-              <MenuItem value="ec384">EC P-384</MenuItem>
-              <MenuItem value="rsa2048">RSA 2048</MenuItem>
-              <MenuItem value="rsa4096">RSA 4096</MenuItem>
-            </Select>
-          </FormControl>
-          <FormControl fullWidth margin="normal">
-            <InputLabel>DNS Provider</InputLabel>
-            <Select
-              value={issueDnsProvider}
-              onChange={(e) => setIssueDnsProvider(e.target.value)}
-              label="DNS Provider"
-            >
-              <MenuItem value="">Auto-detect</MenuItem>
-              {providers.map((p: { key: string; name: string }) => (
-                <MenuItem key={p.key} value={p.key}>{p.name}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+        <DialogTitle sx={{ px: 3, pt: 2.5, pb: 0 }}>
+          <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: '#111827' }}>Issue New Certificate</Typography>
+          <Typography sx={{ fontSize: '0.75rem', color: '#9CA3AF', mt: 0.25 }}>Request a new ACME certificate.</Typography>
+        </DialogTitle>
+        <Divider sx={{ mt: 2 }} />
+        <DialogContent sx={{ px: 3, pt: 2.5 }}>
+          <TextField label="Certificate Name" value={issueName} onChange={(e) => setIssueName(e.target.value)}
+            fullWidth size="small" sx={{ mb: 2 }} helperText="Name for Key Vault storage" />
+          <TextField label="Domains" value={issueDomains} onChange={(e) => setIssueDomains(e.target.value)}
+            fullWidth size="small" sx={{ mb: 2 }} helperText="Comma-separated (first = CN, rest = SANs)" />
+          <Grid container spacing={2}>
+            <Grid item xs={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>Key Type</InputLabel>
+                <Select value={issueKeyType} onChange={(e) => setIssueKeyType(e.target.value)} label="Key Type">
+                  <MenuItem value="ec256">EC P-256</MenuItem>
+                  <MenuItem value="ec384">EC P-384</MenuItem>
+                  <MenuItem value="rsa2048">RSA 2048</MenuItem>
+                  <MenuItem value="rsa4096">RSA 4096</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={6}>
+              <FormControl fullWidth size="small">
+                <InputLabel>DNS Provider</InputLabel>
+                <Select value={issueDnsProvider} onChange={(e) => setIssueDnsProvider(e.target.value)} label="DNS Provider">
+                  <MenuItem value="">Auto-detect</MenuItem>
+                  {providers.map((p: { key: string; name: string }) => (
+                    <MenuItem key={p.key} value={p.key}>{p.name}</MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setIssueOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleIssue}
-            disabled={issueMutation.isPending || !issueName || !issueDomains}
-          >
-            {issueMutation.isPending ? <CircularProgress size={20} /> : 'Issue'}
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
+          <Button size="small" onClick={() => setIssueOpen(false)}>Cancel</Button>
+          <Button variant="contained" size="small" onClick={handleIssue}
+            disabled={issueMutation.isPending || !issueName || !issueDomains}>
+            {issueMutation.isPending ? 'Issuing...' : 'Issue Certificate'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Renew Dialog */}
       <Dialog open={renewOpen} onClose={() => setRenewOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Renew Certificate</DialogTitle>
-        <DialogContent>
-          <TextField
-            label="Certificate Name"
-            value={renewName}
-            onChange={(e) => setRenewName(e.target.value)}
-            fullWidth
-            margin="normal"
-            helperText="Key Vault certificate name"
+        <DialogTitle sx={{ px: 3, pt: 2.5, pb: 0 }}>
+          <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: '#111827' }}>Renew Certificate</Typography>
+        </DialogTitle>
+        <Divider sx={{ mt: 2 }} />
+        <DialogContent sx={{ px: 3, pt: 2.5 }}>
+          <TextField label="Certificate Name" value={renewName} onChange={(e) => setRenewName(e.target.value)}
+            fullWidth size="small" sx={{ mb: 2 }} helperText="Key Vault certificate name" />
+          <FormControlLabel
+            control={<Checkbox size="small" checked={renewForce} onChange={(e) => setRenewForce(e.target.checked)} />}
+            label={<Typography sx={{ fontSize: '0.8125rem' }}>Force renewal (even if not due)</Typography>}
           />
-          <Box mt={1}>
-            <label>
-              <input
-                type="checkbox"
-                checked={renewForce}
-                onChange={(e) => setRenewForce(e.target.checked)}
-              />
-              {' '}Force renewal (even if not due)
-            </label>
-          </Box>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRenewOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            onClick={handleRenew}
-            disabled={renewMutation.isPending || !renewName}
-          >
-            {renewMutation.isPending ? <CircularProgress size={20} /> : 'Renew'}
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
+          <Button size="small" onClick={() => setRenewOpen(false)}>Cancel</Button>
+          <Button variant="contained" size="small" onClick={handleRenew}
+            disabled={renewMutation.isPending || !renewName}>
+            {renewMutation.isPending ? 'Renewing...' : 'Renew'}
           </Button>
         </DialogActions>
       </Dialog>
 
       {/* Revoke Dialog */}
       <Dialog open={revokeOpen} onClose={() => setRevokeOpen(false)} maxWidth="sm" fullWidth>
-        <DialogTitle>Revoke Certificate</DialogTitle>
-        <DialogContent>
-          <Alert severity="warning" sx={{ mb: 2 }}>
+        <DialogTitle sx={{ px: 3, pt: 2.5, pb: 0 }}>
+          <Typography sx={{ fontSize: '1rem', fontWeight: 600, color: '#111827' }}>Revoke Certificate</Typography>
+        </DialogTitle>
+        <Divider sx={{ mt: 2 }} />
+        <DialogContent sx={{ px: 3, pt: 2.5 }}>
+          <Alert severity="error" sx={{ mb: 2, fontSize: '0.8125rem' }}>
             Certificate revocation is permanent and cannot be undone.
           </Alert>
-          <TextField
-            label="Certificate Name"
-            value={revokeName}
-            onChange={(e) => setRevokeName(e.target.value)}
-            fullWidth
-            margin="normal"
-          />
-          <FormControl fullWidth margin="normal">
+          <TextField label="Certificate Name" value={revokeName} onChange={(e) => setRevokeName(e.target.value)}
+            fullWidth size="small" sx={{ mb: 2 }} />
+          <FormControl fullWidth size="small">
             <InputLabel>Reason</InputLabel>
             <Select value={revokeReason} onChange={(e) => setRevokeReason(Number(e.target.value))} label="Reason">
               <MenuItem value={0}>Unspecified</MenuItem>
@@ -315,24 +286,17 @@ export function CertificatesPage() {
             </Select>
           </FormControl>
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setRevokeOpen(false)}>Cancel</Button>
-          <Button
-            variant="contained"
-            color="error"
-            onClick={handleRevoke}
-            disabled={revokeMutation.isPending || !revokeName}
-          >
-            {revokeMutation.isPending ? <CircularProgress size={20} /> : 'Revoke'}
+        <Divider />
+        <DialogActions sx={{ px: 3, py: 1.5 }}>
+          <Button size="small" onClick={() => setRevokeOpen(false)}>Cancel</Button>
+          <Button variant="contained" color="error" size="small" onClick={handleRevoke}
+            disabled={revokeMutation.isPending || !revokeName}>
+            {revokeMutation.isPending ? 'Revoking...' : 'Revoke'}
           </Button>
         </DialogActions>
       </Dialog>
 
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={5000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
+      <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
         <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
           {snackbar.message}
         </Alert>

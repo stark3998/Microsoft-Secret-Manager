@@ -18,6 +18,8 @@ router = APIRouter(prefix="/api/setup", tags=["setup"])
 def _is_setup_complete() -> bool:
     from app.db.cosmos_client import items_container, settings_container
     storage_ready = items_container is not None and settings_container is not None
+    if settings.auth_disabled:
+        return storage_ready
     return (
         storage_ready
         and bool(settings.azure_tenant_id)
@@ -89,8 +91,10 @@ async def get_setup_status():
     azure_ok = bool(settings.azure_tenant_id and settings.azure_client_id)
     msal_ok = bool(settings.msal_client_id or settings.azure_client_id)
 
+    is_configured = (storage_ready and azure_ok) or (storage_ready and settings.auth_disabled)
+
     return {
-        "isConfigured": storage_ready and azure_ok,
+        "isConfigured": is_configured,
         "storageMode": settings.storage_mode,
         "storageReady": storage_ready,
         "cosmosConnected": _client is not None if not is_local else False,
@@ -99,6 +103,7 @@ async def get_setup_status():
         "hasAppConfig": has_app_config,
         "azureConfigured": azure_ok,
         "msalConfigured": msal_ok,
+        "authDisabled": settings.auth_disabled,
     }
 
 

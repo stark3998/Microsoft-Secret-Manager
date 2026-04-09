@@ -30,3 +30,17 @@ export async function fetchVaults(subscription?: string): Promise<VaultInfo[]> {
   const { data } = await apiClient.get('/keyvault-items/vaults', { params: { subscription } });
   return data;
 }
+
+export async function createKeyVaultItem(body: Record<string, unknown>): Promise<KeyVaultItem> {
+  const { data } = await apiClient.post('/keyvault-items', body);
+  return data;
+}
+
+export async function updateKeyVaultItem(id: string, body: Record<string, unknown>): Promise<KeyVaultItem> {
+  const { data } = await apiClient.put(`/keyvault-items/${id}`, body);
+  return data;
+}
+
+export async function deleteKeyVaultItem(id: string): Promise<void> {
+  await apiClient.delete(`/keyvault-items/${id}`);
+}

@@ -6,14 +6,14 @@ export function NotFoundPage() {
 
   return (
     <Box display="flex" flexDirection="column" alignItems="center" justifyContent="center" minHeight="60vh">
-      <Typography variant="h2" fontWeight={700} color="text.secondary" gutterBottom>
+      <Typography sx={{ fontSize: '5rem', fontWeight: 800, color: '#F3F4F6', lineHeight: 1, letterSpacing: '-0.04em' }}>
         404
       </Typography>
-      <Typography variant="h5" gutterBottom>
-        Page Not Found
+      <Typography sx={{ fontSize: '1rem', fontWeight: 500, color: '#6B7280', mt: 1.5 }}>
+        The page you're looking for doesn't exist.
       </Typography>
-      <Button variant="contained" onClick={() => navigate('/')} sx={{ mt: 2 }}>
-        Go to Dashboard
+      <Button variant="outlined" size="small" onClick={() => navigate('/')} sx={{ mt: 3 }}>
+        Back to Dashboard
       </Button>
     </Box>
   );

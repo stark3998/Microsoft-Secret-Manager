@@ -20,6 +20,7 @@ export function getMsalConfig(): Configuration {
       authority: _authority || `https://login.microsoftonline.com/${_tenantId || 'common'}`,
       redirectUri: window.location.origin,
       postLogoutRedirectUri: window.location.origin,
+      navigateToLoginRequestUrl: true,
     },
     cache: {
       cacheLocation: 'localStorage',
@@ -33,9 +34,17 @@ export function getMsalConfig(): Configuration {
   };
 }
 
+/** Scopes for the initial login — just basic OpenID scopes. */
 export let loginRequest = {
-  scopes: _clientId ? [`api://${_clientId}/access_as_user`] : [],
+  scopes: ['openid', 'profile', 'email'],
 };
+
+/** Scopes for acquiring an API access token (used by the API client interceptor). */
+export function getApiTokenRequest() {
+  return {
+    scopes: _clientId ? [`api://${_clientId}/access_as_user`] : [],
+  };
+}
 
 /**
  * Update MSAL configuration at runtime (called when config is fetched from the backend).
@@ -45,13 +54,16 @@ export function updateMsalConfig(clientId: string, tenantId: string, authority?:
   _tenantId = tenantId;
   _authority = authority || `https://login.microsoftonline.com/${tenantId}`;
   loginRequest = {
-    scopes: [`api://${clientId}/access_as_user`],
+    scopes: ['openid', 'profile', 'email'],
   };
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 /**
  * Whether MSAL config is available (either from env vars or runtime update).
+ * Rejects placeholder values like "your-app-registration-client-id".
  */
 export function isMsalConfigured(): boolean {
-  return !!_clientId && !!_tenantId;
+  return UUID_RE.test(_clientId) && UUID_RE.test(_tenantId);
 }

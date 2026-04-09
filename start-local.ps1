@@ -38,19 +38,32 @@ if (-not (Test-Path "frontend\node_modules")) {
 }
 
 # ---------------------------------------------------------------------------
-# Load .env into the current process so the backend picks it up
+# Kill any processes already using our ports
 # ---------------------------------------------------------------------------
-Write-Info "Loading .env..."
-Get-Content ".env" | ForEach-Object {
-    $line = $_.Trim()
-    if ($line -and -not $line.StartsWith("#") -and $line.Contains("=")) {
-        $idx  = $line.IndexOf("=")
-        $key  = $line.Substring(0, $idx).Trim()
-        $val  = $line.Substring($idx + 1).Trim()
-        [Environment]::SetEnvironmentVariable($key, $val, "Process")
+Write-Info "Checking ports 8000, 3000..."
+foreach ($port in @(8000, 3000)) {
+    $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
+    if ($conns) {
+        foreach ($conn in $conns) {
+            $pid = $conn.OwningProcess
+            if ($pid -and $pid -ne 0) {
+                $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+                if ($proc) {
+                    Write-Info "Killing $($proc.ProcessName) (PID $pid) on port $port"
+                    Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+                }
+            }
+        }
     }
 }
-Write-Ok ".env loaded"
+Start-Sleep -Seconds 1
+Write-Ok "Ports are free"
+
+# ---------------------------------------------------------------------------
+# Note: The backend reads the root .env file directly via config.py.
+# No need to load env vars here — this avoids stale overrides when
+# .env changes while uvicorn --reload is running.
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Start backend
@@ -59,23 +72,14 @@ Write-Info "Starting backend (uvicorn on http://localhost:8000)..."
 
 $BackendJob = Start-Job -ScriptBlock {
     param($Root)
-    Set-Location $Root
+    Set-Location "$Root\backend"
 
     # Activate venv
-    & "backend\.venv\Scripts\Activate.ps1"
+    & ".venv\Scripts\Activate.ps1"
 
-    # Re-load .env inside the job (job inherits env but just in case)
-    Get-Content ".env" | ForEach-Object {
-        $line = $_.Trim()
-        if ($line -and -not $line.StartsWith("#") -and $line.Contains("=")) {
-            $idx  = $line.IndexOf("=")
-            $key  = $line.Substring(0, $idx).Trim()
-            $val  = $line.Substring($idx + 1).Trim()
-            [Environment]::SetEnvironmentVariable($key, $val, "Process")
-        }
-    }
-
-    Set-Location backend
+    # The backend reads the root .env directly via absolute path in config.py.
+    # No env var loading needed — this ensures .env edits take effect on
+    # uvicorn --reload without requiring a full restart.
     python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 --reload
 } -ArgumentList $ScriptDir
 

@@ -124,16 +124,20 @@ export function SamlRotationPage() {
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Typography variant="h4" fontWeight={700}>
-          SAML Certificate Rotation
-        </Typography>
+      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3.5}>
+        <Box>
+          <Typography variant="h4">SAML Certificate Rotation</Typography>
+          <Typography sx={{ color: '#6B7280', fontSize: '0.8125rem', mt: 0.5 }}>
+            Manage automated SAML signing certificate lifecycle for enterprise applications.
+          </Typography>
+        </Box>
         <Tooltip title="Run a full rotation cycle (evaluate + process all states)">
           <Button
             variant="contained"
-            startIcon={cycleMutation.isPending ? <CircularProgress size={18} /> : <AutorenewIcon />}
+            startIcon={cycleMutation.isPending ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <AutorenewIcon />}
             onClick={handleRunCycle}
             disabled={cycleMutation.isPending}
+            size="small"
           >
             Run Rotation Cycle
           </Button>
@@ -144,14 +148,20 @@ export function SamlRotationPage() {
       <Grid container spacing={2} mb={3}>
         {(['staged', 'notified', 'activated', 'completed', 'failed'] as const).map((state) => (
           <Grid item xs={6} sm={4} md key={state}>
-            <Card sx={{ borderLeft: `4px solid ${ROTATION_STATE_COLORS[state]}` }}>
-              <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
-                <Typography variant="h4" fontWeight={700}>
+            <Card sx={{
+              transition: 'all 0.2s ease',
+              '&:hover': { borderColor: '#E5E7EB', transform: 'translateY(-1px)' },
+            }}>
+              <CardContent sx={{ py: 2, px: 2.5, '&:last-child': { pb: 2 } }}>
+                <Typography sx={{ fontSize: '1.5rem', fontWeight: 700, color: '#111827', lineHeight: 1, mb: 0.5 }}>
                   {stateCounts[state] || 0}
                 </Typography>
-                <Typography variant="body2" color="text.secondary">
+                <Typography sx={{ fontSize: '0.75rem', color: '#6B7280' }}>
                   {ROTATION_STATE_LABELS[state]}
                 </Typography>
+                <Box sx={{ mt: 1, height: 3, borderRadius: 2, backgroundColor: '#F3F4F6', overflow: 'hidden' }}>
+                  <Box sx={{ height: '100%', width: '100%', borderRadius: 2, backgroundColor: ROTATION_STATE_COLORS[state], opacity: 0.4 }} />
+                </Box>
               </CardContent>
             </Card>
           </Grid>
@@ -212,7 +222,7 @@ export function SamlRotationPage() {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" fontFamily="monospace" fontSize={12}>
+                      <Typography variant="body2" fontFamily='"JetBrains Mono", "Fira Code", monospace' fontSize="0.75rem">
                         {app.currentThumbprint ? `${app.currentThumbprint.slice(0, 16)}...` : '-'}
                       </Typography>
                     </TableCell>
@@ -295,12 +305,12 @@ export function SamlRotationPage() {
                     </TableCell>
                     <TableCell><RotationStateChip state={rotation.state} /></TableCell>
                     <TableCell>
-                      <Typography variant="body2" fontFamily="monospace" fontSize={12}>
+                      <Typography variant="body2" fontFamily='"JetBrains Mono", "Fira Code", monospace' fontSize="0.75rem">
                         {rotation.oldThumbprint ? `${rotation.oldThumbprint.slice(0, 12)}...` : '-'}
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Typography variant="body2" fontFamily="monospace" fontSize={12}>
+                      <Typography variant="body2" fontFamily='"JetBrains Mono", "Fira Code", monospace' fontSize="0.75rem">
                         {rotation.newThumbprint ? `${rotation.newThumbprint.slice(0, 12)}...` : '-'}
                       </Typography>
                     </TableCell>

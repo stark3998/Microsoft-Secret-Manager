@@ -19,6 +19,7 @@ export interface SetupStatus {
   hasAppConfig: boolean;
   azureConfigured: boolean;
   msalConfigured: boolean;
+  authDisabled: boolean;
 }
 
 export interface FrontendConfig {

@@ -1,6 +1,5 @@
-import { AppBar, Toolbar, Typography, Box, Chip, IconButton, Tooltip } from '@mui/material';
-import LogoutIcon from '@mui/icons-material/Logout';
-import PersonIcon from '@mui/icons-material/Person';
+import { AppBar, Toolbar, Box, Typography, IconButton, Tooltip } from '@mui/material';
+import LogoutIcon from '@mui/icons-material/LogoutOutlined';
 import { useAuth } from '../../auth/useAuth';
 import { DRAWER_WIDTH } from './Sidebar';
 
@@ -10,33 +9,44 @@ export function Header() {
   return (
     <AppBar
       position="fixed"
+      elevation={0}
       sx={{
         width: `calc(100% - ${DRAWER_WIDTH}px)`,
         ml: `${DRAWER_WIDTH}px`,
-        backgroundColor: '#fff',
-        color: '#333',
-        boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+        backgroundColor: '#FFFFFF',
+        borderBottom: '1px solid #E5E7EB',
+        zIndex: (theme) => theme.zIndex.drawer - 1,
       }}
     >
-      <Toolbar>
-        <Typography variant="h6" noWrap sx={{ flexGrow: 1, fontWeight: 600 }}>
-          Azure Secret Management
-        </Typography>
-        <Box display="flex" alignItems="center" gap={2}>
-          <Chip
-            icon={<PersonIcon />}
-            label={user?.name || user?.email || 'User'}
-            variant="outlined"
-            size="small"
-          />
-          <Chip
-            label={user?.isAdmin ? 'Admin' : 'Viewer'}
-            size="small"
-            color={user?.isAdmin ? 'primary' : 'default'}
-          />
+      <Toolbar variant="dense" sx={{ minHeight: 48, px: 2.5 }}>
+        <Box sx={{ flexGrow: 1 }} />
+        <Box display="flex" alignItems="center" gap={1.5}>
+          <Box sx={{ textAlign: 'right' }}>
+            <Typography sx={{ fontSize: '0.8125rem', fontWeight: 500, color: '#111827', lineHeight: 1.3 }}>
+              {user?.name || user?.email || 'User'}
+            </Typography>
+            <Typography sx={{ fontSize: '0.6875rem', color: '#6B7280', lineHeight: 1.2 }}>
+              {user?.isAdmin ? 'Administrator' : 'Viewer'}
+            </Typography>
+          </Box>
+          <Box sx={{
+            width: 32, height: 32, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #0078D4 0%, #106EBE 100%)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '0.75rem', fontWeight: 600, color: '#FFFFFF',
+          }}>
+            {(user?.name || 'U').charAt(0).toUpperCase()}
+          </Box>
           <Tooltip title="Sign out">
-            <IconButton onClick={logout} size="small">
-              <LogoutIcon />
+            <IconButton
+              onClick={logout}
+              size="small"
+              sx={{
+                color: '#6B7280',
+                '&:hover': { color: '#374151', backgroundColor: '#F3F4F6' },
+              }}
+            >
+              <LogoutIcon sx={{ fontSize: '1.1rem' }} />
             </IconButton>
           </Tooltip>
         </Box>

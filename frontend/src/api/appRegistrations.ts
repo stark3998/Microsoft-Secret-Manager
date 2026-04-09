@@ -17,3 +17,17 @@ export async function fetchAppRegistration(id: string): Promise<AppRegistrationI
   const { data } = await apiClient.get(`/app-registrations/${id}`);
   return data;
 }
+
+export async function createAppRegistration(body: Record<string, unknown>): Promise<AppRegistrationItem> {
+  const { data } = await apiClient.post('/app-registrations', body);
+  return data;
+}
+
+export async function updateAppRegistration(id: string, body: Record<string, unknown>): Promise<AppRegistrationItem> {
+  const { data } = await apiClient.put(`/app-registrations/${id}`, body);
+  return data;
+}
+
+export async function deleteAppRegistration(id: string): Promise<void> {
+  await apiClient.delete(`/app-registrations/${id}`);
+}

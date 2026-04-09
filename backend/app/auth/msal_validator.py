@@ -32,9 +32,11 @@ async def _get_signing_keys() -> dict[str, Any]:
 
 
 async def validate_token(token: str) -> dict[str, Any]:
-    """Validate a JWT access token from MSAL and return claims.
+    """Validate a JWT access token or ID token from MSAL and return claims.
 
-    Raises JWTError or ValueError on invalid tokens.
+    Accepts both:
+    - Access tokens with audience = api://{client_id} (when API scope is configured)
+    - ID tokens with audience = {client_id} (basic SPA auth)
     """
     jwks = await _get_signing_keys()
 
@@ -51,15 +53,43 @@ async def validate_token(token: str) -> dict[str, Any]:
     if rsa_key is None:
         raise ValueError("Unable to find matching signing key in JWKS")
 
-    audience = settings.msal_client_id or settings.azure_client_id
+    client_id = settings.msal_client_id or settings.azure_client_id
 
-    claims = jwt.decode(
-        token,
-        rsa_key,
-        algorithms=["RS256"],
-        audience=audience,
-        issuer=settings.msal_issuer,
-        options={"verify_at_hash": False},
-    )
+    # Accept both access tokens (api://{id}) and ID tokens ({id}) as valid audiences
+    valid_audiences = [client_id, f"api://{client_id}"]
 
-    return claims
+    # Try validation with each audience
+    last_error = None
+    for audience in valid_audiences:
+        try:
+            claims = jwt.decode(
+                token,
+                rsa_key,
+                algorithms=["RS256"],
+                audience=audience,
+                issuer=settings.msal_issuer,
+                options={"verify_at_hash": False},
+            )
+            return claims
+        except JWTError as e:
+            last_error = e
+            continue
+
+    # If strict audience validation fails, try with v1 issuer format
+    v1_issuer = f"https://sts.windows.net/{settings.azure_tenant_id}/"
+    for audience in valid_audiences:
+        try:
+            claims = jwt.decode(
+                token,
+                rsa_key,
+                algorithms=["RS256"],
+                audience=audience,
+                issuer=v1_issuer,
+                options={"verify_at_hash": False},
+            )
+            return claims
+        except JWTError as e:
+            last_error = e
+            continue
+
+    raise last_error or ValueError("Token validation failed")

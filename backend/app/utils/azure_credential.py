@@ -1,4 +1,4 @@
-from azure.identity import DefaultAzureCredential, DefaultAzureCredentialOptions
+from azure.identity import DefaultAzureCredential
 
 from app.config import settings
 
@@ -19,19 +19,14 @@ def get_azure_credential() -> DefaultAzureCredential:
     """
     global _credential
     if _credential is None:
-        options = DefaultAzureCredentialOptions()
+        kwargs: dict = {}
 
         authority_host = AUTHORITY_HOSTS.get(settings.azure_environment)
         if authority_host:
-            options.authority = authority_host
+            kwargs["authority"] = authority_host
 
         if settings.managed_identity_client_id:
-            options.managed_identity_client_id = settings.managed_identity_client_id
+            kwargs["managed_identity_client_id"] = settings.managed_identity_client_id
 
-        _credential = DefaultAzureCredential(**{
-            k: v for k, v in {
-                "authority": getattr(options, "authority", None),
-                "managed_identity_client_id": getattr(options, "managed_identity_client_id", None),
-            }.items() if v
-        }) if settings.managed_identity_client_id or settings.azure_environment != "AzureCloud" else DefaultAzureCredential()
+        _credential = DefaultAzureCredential(**kwargs)
     return _credential

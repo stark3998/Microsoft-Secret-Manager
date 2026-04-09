@@ -1,12 +1,56 @@
-from fastapi import APIRouter, Depends, Query
+from datetime import datetime, timezone
 
-from app.auth.dependencies import require_viewer
+from fastapi import APIRouter, Depends, Query, HTTPException
+from pydantic import BaseModel
+
+from app.auth.dependencies import require_viewer, require_permission
+from app.auth.rbac import Permission
 from app.db.cosmos_client import get_items_container
 from app.db.queries import query_items, count_items
 from app.models.user import UserInfo
+from app.services.expiration import compute_expiration_status as _compute_expiration
 from app.utils.pagination import paginate
 
+
+def _expiry_info(expires_on_str: str | None) -> dict:
+    """Parse an ISO date string and return {status, days}."""
+    dt = None
+    if expires_on_str:
+        dt = datetime.fromisoformat(expires_on_str)
+    status, days = _compute_expiration(dt)
+    return {"status": status, "days": days}
+
 router = APIRouter(prefix="/api/keyvault-items", tags=["keyvault-items"])
+
+
+class KeyVaultItemCreate(BaseModel):
+    item_type: str  # secret | key | certificate
+    subscription_id: str = ""
+    subscription_name: str = ""
+    resource_group: str = ""
+    vault_name: str
+    vault_uri: str = ""
+    item_name: str
+    item_version: str = ""
+    enabled: bool = True
+    expires_on: str | None = None
+    not_before_date: str | None = None
+    tags: dict[str, str] = {}
+
+
+class KeyVaultItemUpdate(BaseModel):
+    item_name: str | None = None
+    item_type: str | None = None
+    subscription_id: str | None = None
+    subscription_name: str | None = None
+    resource_group: str | None = None
+    vault_name: str | None = None
+    vault_uri: str | None = None
+    item_version: str | None = None
+    enabled: bool | None = None
+    expires_on: str | None = None
+    not_before_date: str | None = None
+    tags: dict[str, str] | None = None
 
 
 @router.get("")
@@ -104,6 +148,108 @@ async def get_keyvault_item(item_id: str, user: UserInfo = Depends(require_viewe
     params = [{"name": "@id", "value": item_id}]
     results = await query_items(container, query, params)
     if not results:
-        from fastapi import HTTPException
         raise HTTPException(status_code=404, detail="Item not found")
     return results[0]
+
+
+@router.post("")
+async def create_keyvault_item(
+    body: KeyVaultItemCreate,
+    user: UserInfo = Depends(require_permission(Permission.MANAGE_CREDENTIALS)),
+):
+    """Create a new Key Vault item."""
+    container = get_items_container()
+    now = datetime.now(timezone.utc).isoformat()
+    item_id = f"kv-{body.vault_name}-{body.item_type}-{body.item_name}".lower()
+
+    expiry = _expiry_info(body.expires_on)
+
+    doc = {
+        "id": item_id,
+        "partitionKey": body.subscription_id or "manual",
+        "itemType": body.item_type,
+        "source": "keyvault",
+        "subscriptionId": body.subscription_id,
+        "subscriptionName": body.subscription_name,
+        "resourceGroup": body.resource_group,
+        "vaultName": body.vault_name,
+        "vaultUri": body.vault_uri,
+        "itemName": body.item_name,
+        "itemVersion": body.item_version,
+        "enabled": body.enabled,
+        "expiresOn": body.expires_on,
+        "createdOn": now,
+        "updatedOn": now,
+        "notBeforeDate": body.not_before_date,
+        "tags": body.tags,
+        "expirationStatus": expiry["status"],
+        "daysUntilExpiration": expiry["days"],
+        "lastScannedAt": None,
+        "scanRunId": "",
+        "createdBy": user.name or user.oid,
+    }
+    await container.upsert_item(body=doc)
+    return doc
+
+
+@router.put("/{item_id}")
+async def update_keyvault_item(
+    item_id: str,
+    body: KeyVaultItemUpdate,
+    user: UserInfo = Depends(require_permission(Permission.MANAGE_CREDENTIALS)),
+):
+    """Update an existing Key Vault item."""
+    container = get_items_container()
+    query = "SELECT * FROM c WHERE c.id = @id AND c.source = 'keyvault'"
+    params = [{"name": "@id", "value": item_id}]
+    results = await query_items(container, query, params)
+    if not results:
+        raise HTTPException(status_code=404, detail="Item not found")
+
+    doc = results[0]
+    updates = body.model_dump(exclude_none=True)
+
+    field_map = {
+        "item_name": "itemName",
+        "item_type": "itemType",
+        "subscription_id": "subscriptionId",
+        "subscription_name": "subscriptionName",
+        "resource_group": "resourceGroup",
+        "vault_name": "vaultName",
+        "vault_uri": "vaultUri",
+        "item_version": "itemVersion",
+        "enabled": "enabled",
+        "expires_on": "expiresOn",
+        "not_before_date": "notBeforeDate",
+        "tags": "tags",
+    }
+    for py_key, cosmos_key in field_map.items():
+        if py_key in updates:
+            doc[cosmos_key] = updates[py_key]
+
+    doc["updatedOn"] = datetime.now(timezone.utc).isoformat()
+    doc["updatedBy"] = user.name or user.oid
+
+    expiry = _expiry_info(doc.get("expiresOn"))
+    doc["expirationStatus"] = expiry["status"]
+    doc["daysUntilExpiration"] = expiry["days"]
+
+    await container.upsert_item(body=doc)
+    return doc
+
+
+@router.delete("/{item_id}")
+async def delete_keyvault_item(
+    item_id: str,
+    user: UserInfo = Depends(require_permission(Permission.MANAGE_CREDENTIALS)),
+):
+    """Delete a Key Vault item."""
+    container = get_items_container()
+    query = "SELECT * FROM c WHERE c.id = @id AND c.source = 'keyvault'"
+    params = [{"name": "@id", "value": item_id}]
+    results = await query_items(container, query, params)
+    if not results:
+        raise HTTPException(status_code=404, detail="Item not found")
+    doc = results[0]
+    await container.delete_item(item=item_id, partition_key=doc.get("partitionKey", ""))
+    return {"status": "deleted", "id": item_id}

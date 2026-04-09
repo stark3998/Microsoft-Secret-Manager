@@ -10,12 +10,12 @@ export const ROUTES = {
 } as const;
 
 export const STATUS_COLORS: Record<string, string> = {
-  expired: '#d32f2f',
-  critical: '#d32f2f',
-  warning: '#ed6c02',
-  notice: '#0288d1',
-  healthy: '#2e7d32',
-  no_expiry: '#9e9e9e',
+  expired: '#DC2626',
+  critical: '#DC2626',
+  warning: '#D97706',
+  notice: '#0284C7',
+  healthy: '#059669',
+  no_expiry: '#9CA3AF',
 };
 
 export const STATUS_LABELS: Record<string, string> = {
@@ -42,12 +42,12 @@ export const ITEM_TYPE_LABELS: Record<string, string> = {
 };
 
 export const ROTATION_STATE_COLORS: Record<string, string> = {
-  staged: '#0288d1',
-  notified: '#ed6c02',
-  activated: '#2e7d32',
-  completed: '#9e9e9e',
-  cancelled: '#757575',
-  failed: '#d32f2f',
+  staged: '#0284C7',
+  notified: '#D97706',
+  activated: '#059669',
+  completed: '#9CA3AF',
+  cancelled: '#6B7280',
+  failed: '#DC2626',
 };
 
 export const ROTATION_STATE_LABELS: Record<string, string> = {

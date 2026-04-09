@@ -1,14 +1,27 @@
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Resolve the .env file relative to the project root (two levels up from this file)
+# so it works regardless of the current working directory.
+_ENV_FILE = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
     """Application settings loaded from environment variables."""
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=str(_ENV_FILE) if _ENV_FILE.exists() else ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+    )
 
     # Storage mode: "cosmos" (Azure Cosmos DB) or "local" (JSON files, no cloud)
     storage_mode: str = "cosmos"
     local_data_dir: str = "./data"
+
+    # Auth
+    auth_disabled: bool = False  # Set to true to skip JWT validation in development
 
     # Azure / Entra ID
     azure_tenant_id: str = ""

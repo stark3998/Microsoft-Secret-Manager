@@ -7,7 +7,7 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+
 import WebhookIcon from '@mui/icons-material/Webhook';
 import SecurityIcon from '@mui/icons-material/Security';
 import StorageIcon from '@mui/icons-material/Storage';
@@ -120,25 +120,23 @@ az eventgrid system-topic event-subscription create \\
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-        <Box>
-          <Typography variant="h4" fontWeight={700}>
-            Event Grid Configuration
-          </Typography>
-          <Typography variant="body2" color="text.secondary" mt={0.5}>
-            Configure Azure Event Grid to receive real-time Key Vault notifications
-          </Typography>
-        </Box>
+      <Box mb={3.5}>
+        <Typography variant="h4">Event Grid Configuration</Typography>
+        <Typography sx={{ color: '#6B7280', fontSize: '0.8125rem', mt: 0.5 }}>
+          Configure Azure Event Grid to receive real-time Key Vault notifications.
+        </Typography>
       </Box>
 
       {/* Webhook URL Card */}
-      <Card sx={{ mb: 3, border: '2px solid', borderColor: 'primary.main' }}>
-        <CardContent>
-          <Box display="flex" alignItems="center" gap={1} mb={2}>
-            <WebhookIcon color="primary" />
-            <Typography variant="h6" fontWeight={600}>Your Webhook Endpoint</Typography>
+      <Card sx={{ mb: 3, border: '1px solid #E5E7EB' }}>
+        <CardContent sx={{ p: 2.5 }}>
+          <Box display="flex" alignItems="center" gap={1.5} mb={2}>
+            <Box sx={{ width: 36, height: 36, borderRadius: '10px', backgroundColor: '#EFF6FF', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <WebhookIcon sx={{ fontSize: '1.15rem', color: '#3B82F6' }} />
+            </Box>
+            <Typography sx={{ fontSize: '0.95rem', fontWeight: 600, color: '#111827' }}>Your Webhook Endpoint</Typography>
           </Box>
-          <Typography variant="body2" color="text.secondary" mb={2}>
+          <Typography sx={{ fontSize: '0.8125rem', color: '#6B7280', mb: 2 }}>
             This URL is auto-detected from your current browser location. Use this as the Event Grid subscription endpoint.
           </Typography>
           <TextField
@@ -146,7 +144,7 @@ az eventgrid system-topic event-subscription create \\
             value={webhookUrl}
             InputProps={{
               readOnly: true,
-              sx: { fontFamily: 'monospace', fontSize: '0.95rem', backgroundColor: '#f5f5f5' },
+              sx: { fontFamily: '"JetBrains Mono", "Fira Code", monospace', fontSize: '0.85rem', backgroundColor: '#F9FAFB' },
               endAdornment: (
                 <InputAdornment position="end">
                   <Tooltip title="Copy URL">
@@ -229,7 +227,7 @@ az eventgrid system-topic event-subscription create \\
                       To register the Event Grid provider, run:
                       <Box
                         component="code"
-                        sx={{ display: 'block', mt: 1, p: 1, backgroundColor: '#263238', color: '#e0e0e0', borderRadius: 1, fontSize: '0.85rem' }}
+                        sx={{ display: 'block', mt: 1, p: 1, backgroundColor: '#1E293B', color: '#E5E7EB', borderRadius: 1, fontSize: '0.85rem' }}
                       >
                         az provider register --namespace Microsoft.EventGrid
                       </Box>
@@ -364,7 +362,7 @@ az eventgrid system-topic event-subscription create \\
                         size="small"
                         InputProps={{
                           readOnly: true,
-                          sx: { fontFamily: 'monospace', fontSize: '0.85rem', backgroundColor: '#f5f5f5' },
+                          sx: { fontFamily: '"JetBrains Mono", "Fira Code", monospace', fontSize: '0.8rem', backgroundColor: '#F9FAFB' },
                           endAdornment: (
                             <InputAdornment position="end">
                               <Tooltip title="Copy URL">
@@ -462,7 +460,7 @@ az eventgrid system-topic event-subscription create \\
               <Typography variant="subtitle2" fontWeight={600} mb={1}>Azure CLI</Typography>
               <Paper
                 variant="outlined"
-                sx={{ p: 2, mb: 3, backgroundColor: '#263238', position: 'relative', overflow: 'auto' }}
+                sx={{ p: 2, mb: 3, backgroundColor: '#1E293B', position: 'relative', overflow: 'auto' }}
               >
                 <Tooltip title="Copy CLI commands">
                   <IconButton
@@ -475,7 +473,7 @@ az eventgrid system-topic event-subscription create \\
                 </Tooltip>
                 <Typography
                   component="pre"
-                  sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#e0e0e0', whiteSpace: 'pre-wrap', m: 0 }}
+                  sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#E5E7EB', whiteSpace: 'pre-wrap', m: 0 }}
                 >
                   {azureCliCommand}
                 </Typography>
@@ -487,7 +485,7 @@ az eventgrid system-topic event-subscription create \\
               </Typography>
               <Paper
                 variant="outlined"
-                sx={{ p: 2, backgroundColor: '#263238', position: 'relative', overflow: 'auto' }}
+                sx={{ p: 2, backgroundColor: '#1E293B', position: 'relative', overflow: 'auto' }}
               >
                 <Tooltip title="Copy Bicep snippet">
                   <IconButton
@@ -500,7 +498,7 @@ az eventgrid system-topic event-subscription create \\
                 </Tooltip>
                 <Typography
                   component="pre"
-                  sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#e0e0e0', whiteSpace: 'pre-wrap', m: 0 }}
+                  sx={{ fontFamily: 'monospace', fontSize: '0.8rem', color: '#E5E7EB', whiteSpace: 'pre-wrap', m: 0 }}
                 >
                   {bicepSnippet}
                 </Typography>

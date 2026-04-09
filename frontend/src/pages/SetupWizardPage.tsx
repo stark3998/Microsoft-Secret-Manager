@@ -153,14 +153,7 @@ export function SetupWizardPage({ onComplete }: SetupWizardPageProps) {
   };
 
   // ── validation ──
-  const cosmosValid = storageMode === 'local' || (cosmosEndpoint && (useManagedIdentity || cosmosKey));
   const azureValid = azureTenantId && azureClientId;
-
-  // In local mode, we skip the Cosmos step entirely
-  const steps =
-    storageMode === 'local'
-      ? ['Storage Mode', 'Azure / Entra ID', 'Review & Apply']
-      : ['Storage Mode', 'Cosmos DB', 'Azure / Entra ID', 'Review & Apply'];
 
   // Map activeStep to logical step when local mode skips Cosmos
   const goForward = () => setActiveStep((s) => s + 1);

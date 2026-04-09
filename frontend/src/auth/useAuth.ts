@@ -1,5 +1,5 @@
 import { useMsal } from '@azure/msal-react';
-import { loginRequest } from './msalConfig';
+import { loginRequest, getApiTokenRequest } from './msalConfig';
 
 export interface AuthUser {
   name: string;
@@ -8,7 +8,34 @@ export interface AuthUser {
   isAdmin: boolean;
 }
 
+const DEV_USER: AuthUser = {
+  name: 'Dev Admin',
+  email: 'dev@localhost',
+  roles: ['Admin'],
+  isAdmin: true,
+};
+
+/**
+ * When true, auth is bypassed and a dev admin user is returned.
+ * Set by AppBootstrap when the backend reports authDisabled.
+ */
+export let authDisabledMode = false;
+
+export function setAuthDisabledMode(value: boolean) {
+  authDisabledMode = value;
+}
+
 export function useAuth() {
+  // In no-auth mode, return a dev admin user without touching MSAL
+  if (authDisabledMode) {
+    return {
+      user: DEV_USER,
+      account: null,
+      getAccessToken: async () => '',
+      logout: () => { window.location.reload(); },
+    };
+  }
+
   const { instance, accounts } = useMsal();
   const account = accounts[0];
 
@@ -22,11 +49,18 @@ export function useAuth() {
     : null;
 
   const getAccessToken = async (): Promise<string> => {
-    const response = await instance.acquireTokenSilent({
-      ...loginRequest,
-      account: account,
-    });
-    return response.accessToken;
+    const apiScopes = getApiTokenRequest();
+    try {
+      // Try API-scoped access token first
+      if (apiScopes.scopes.length > 0) {
+        const response = await instance.acquireTokenSilent({ ...apiScopes, account });
+        return response.accessToken;
+      }
+    } catch {
+      // API scope not configured — fall through to ID token
+    }
+    const response = await instance.acquireTokenSilent({ ...loginRequest, account });
+    return response.idToken;
   };
 
   const logout = () => {

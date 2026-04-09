@@ -1,6 +1,7 @@
 import axios from 'axios';
 import { msalInstance } from '../auth/AuthProvider';
-import { loginRequest } from '../auth/msalConfig';
+import { loginRequest, getApiTokenRequest } from '../auth/msalConfig';
+import { authDisabledMode } from '../auth/useAuth';
 
 const apiClient = axios.create({
   baseURL: '/api',
@@ -11,19 +12,24 @@ const apiClient = axios.create({
 
 // Attach MSAL access token to every request
 apiClient.interceptors.request.use(async (config) => {
-  if (!msalInstance) return config;
+  if (authDisabledMode || !msalInstance) return config;
 
-  const accounts = msalInstance.getAllAccounts();
-  if (accounts.length > 0) {
+  const account = msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0];
+  if (account) {
+    // Try API-scoped token first; fall back to basic ID token
+    const apiScopes = getApiTokenRequest();
+    const tokenRequest = apiScopes.scopes.length > 0 ? { ...apiScopes, account } : { ...loginRequest, account };
     try {
-      const response = await msalInstance.acquireTokenSilent({
-        ...loginRequest,
-        account: accounts[0],
-      });
+      const response = await msalInstance.acquireTokenSilent(tokenRequest);
       config.headers.Authorization = `Bearer ${response.accessToken}`;
     } catch {
-      // If silent token acquisition fails, trigger redirect
-      await msalInstance.acquireTokenRedirect(loginRequest);
+      // If API scope fails (not configured), try basic scopes for ID token
+      try {
+        const response = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
+        config.headers.Authorization = `Bearer ${response.idToken}`;
+      } catch {
+        await msalInstance.acquireTokenRedirect(loginRequest);
+      }
     }
   }
   return config;

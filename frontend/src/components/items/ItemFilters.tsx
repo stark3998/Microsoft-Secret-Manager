@@ -1,4 +1,5 @@
-import { Box, TextField, FormControl, InputLabel, Select, MenuItem } from '@mui/material';
+import { Box, TextField, FormControl, InputLabel, Select, MenuItem, InputAdornment } from '@mui/material';
+import SearchIcon from '@mui/icons-material/SearchOutlined';
 
 interface ItemFiltersProps {
   search: string;
@@ -20,18 +21,34 @@ const STATUS_OPTIONS = [
 
 export function ItemFilters({ search, onSearchChange, status, onStatusChange, extraFilters }: ItemFiltersProps) {
   return (
-    <Box display="flex" gap={2} mb={2} flexWrap="wrap">
+    <Box display="flex" gap={1.5} mb={2.5} flexWrap="wrap" alignItems="center">
       <TextField
-        label="Search"
         value={search}
         onChange={(e) => onSearchChange(e.target.value)}
         size="small"
-        sx={{ minWidth: 250 }}
-        placeholder="Search by name..."
+        placeholder="Search items..."
+        sx={{
+          minWidth: 260,
+          '& .MuiOutlinedInput-root': {
+            backgroundColor: '#FFFFFF',
+          },
+        }}
+        InputProps={{
+          startAdornment: (
+            <InputAdornment position="start">
+              <SearchIcon sx={{ fontSize: '1.1rem', color: '#9CA3AF' }} />
+            </InputAdornment>
+          ),
+        }}
       />
       <FormControl size="small" sx={{ minWidth: 160 }}>
         <InputLabel>Status</InputLabel>
-        <Select value={status} label="Status" onChange={(e) => onStatusChange(e.target.value)}>
+        <Select
+          value={status}
+          label="Status"
+          onChange={(e) => onStatusChange(e.target.value)}
+          sx={{ backgroundColor: '#FFFFFF' }}
+        >
           {STATUS_OPTIONS.map((opt) => (
             <MenuItem key={opt.value} value={opt.value}>{opt.label}</MenuItem>
           ))}

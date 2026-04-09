@@ -4,9 +4,17 @@ from fastapi import Depends, HTTPException, Request
 
 from app.auth.msal_validator import validate_token
 from app.auth.rbac import Role, Permission, ADMIN_PERMISSIONS, VIEWER_PERMISSIONS
+from app.config import settings
 from app.models.user import UserInfo
 
 logger = logging.getLogger(__name__)
+
+_DEV_USER = UserInfo(
+    oid="dev-user",
+    name="Dev Admin",
+    email="dev@localhost",
+    roles=["Admin"],
+)
 
 
 def _extract_bearer_token(request: Request) -> str:
@@ -19,6 +27,9 @@ def _extract_bearer_token(request: Request) -> str:
 
 async def get_current_user(request: Request) -> UserInfo:
     """Validate the access token and return user info."""
+    if settings.auth_disabled:
+        return _DEV_USER
+
     token = _extract_bearer_token(request)
 
     try:

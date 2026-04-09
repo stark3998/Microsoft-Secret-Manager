@@ -1,6 +1,6 @@
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, TablePagination, Typography, Box,
+  Paper, TablePagination, Typography,
 } from '@mui/material';
 import { StatusBadge } from '../common/StatusBadge';
 import { formatDate, formatDaysUntilExpiration } from '../../utils/formatters';
@@ -21,11 +21,12 @@ interface ItemsTableProps {
   onPageChange: (page: number) => void;
   onPageSizeChange: (size: number) => void;
   isLoading?: boolean;
+  onRowClick?: (item: Record<string, unknown>) => void;
 }
 
 const defaultColumns: Column[] = [
   { key: 'itemName', label: 'Name', render: (item) => (
-    <Typography variant="body2" fontWeight={500}>
+    <Typography sx={{ fontSize: '0.8125rem', fontWeight: 500, color: '#111827' }}>
       {(item.itemName || item.appDisplayName || 'Unknown') as string}
     </Typography>
   )},
@@ -46,21 +47,30 @@ export function ItemsTable({
   onPageChange,
   onPageSizeChange,
   isLoading,
+  onRowClick,
 }: ItemsTableProps) {
   return (
-    <Paper>
+    <Paper sx={{ overflow: 'hidden', borderRadius: '12px' }}>
       <TableContainer>
         <Table size="small">
           <TableHead>
             <TableRow>
               {columns.map((col) => (
-                <TableCell key={col.key} sx={{ fontWeight: 600 }}>{col.label}</TableCell>
+                <TableCell key={col.key}>{col.label}</TableCell>
               ))}
             </TableRow>
           </TableHead>
           <TableBody>
             {items.map((item, index) => (
-              <TableRow key={(item.id as string) || index} hover>
+              <TableRow
+                key={(item.id as string) || index}
+                hover
+                onClick={() => onRowClick?.(item)}
+                sx={onRowClick ? {
+                  cursor: 'pointer',
+                  '&:hover': { backgroundColor: '#F9FAFB' },
+                } : undefined}
+              >
                 {columns.map((col) => (
                   <TableCell key={col.key}>
                     {col.render ? col.render(item) : (item[col.key] as string) ?? '-'}
@@ -70,8 +80,8 @@ export function ItemsTable({
             ))}
             {items.length === 0 && !isLoading && (
               <TableRow>
-                <TableCell colSpan={columns.length} align="center" sx={{ py: 6 }}>
-                  <Typography color="text.secondary">No items found</Typography>
+                <TableCell colSpan={columns.length} align="center" sx={{ py: 8 }}>
+                  <Typography sx={{ color: '#9CA3AF', fontSize: '0.8125rem' }}>No items found</Typography>
                 </TableCell>
               </TableRow>
             )}
@@ -86,6 +96,15 @@ export function ItemsTable({
         onPageChange={(_, newPage) => onPageChange(newPage + 1)}
         onRowsPerPageChange={(e) => onPageSizeChange(parseInt(e.target.value, 10))}
         rowsPerPageOptions={[10, 25, 50, 100]}
+        sx={{
+          borderTop: '1px solid #E5E7EB',
+          '& .MuiTablePagination-selectLabel, & .MuiTablePagination-displayedRows': {
+            fontSize: '0.75rem', color: '#6B7280',
+          },
+          '& .MuiTablePagination-select': {
+            fontSize: '0.75rem',
+          },
+        }}
       />
     </Paper>
   );
