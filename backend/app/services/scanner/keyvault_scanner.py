@@ -26,7 +26,7 @@ async def scan_subscription(
     # List all Key Vaults in the subscription
     kv_mgmt = KeyVaultManagementClient(credential, subscription_id)
     vaults = []
-    for vault in kv_mgmt.vaults.list():
+    for vault in kv_mgmt.vaults.list_by_subscription():
         vaults.append(vault)
 
     logger.info(f"Found {len(vaults)} vaults in subscription {subscription_name}")
