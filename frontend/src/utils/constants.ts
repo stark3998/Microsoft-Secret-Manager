@@ -1,5 +1,6 @@
 export const ROUTES = {
   DASHBOARD: '/',
+  SCANS: '/scans',
   KEYVAULT_ITEMS: '/keyvault-items',
   APP_REGISTRATIONS: '/app-registrations',
   ENTERPRISE_APPS: '/enterprise-apps',

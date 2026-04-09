@@ -17,6 +17,7 @@ import { EventGridConfigPage } from './pages/EventGridConfigPage';
 import { SetupWizardPage } from './pages/SetupWizardPage';
 import { NotFoundPage } from './pages/NotFoundPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { ScansPage } from './pages/ScansPage';
 import { fetchSetupStatus } from './api/setup';
 import { setAuthDisabledMode } from './auth/useAuth';
 
@@ -254,6 +255,7 @@ function AppRoutes() {
       <Routes>
         <Route element={<AppShell />}>
           <Route path="/" element={<DashboardPage />} />
+          <Route path="/scans" element={<ScansPage />} />
           <Route path="/keyvault-items" element={<KeyVaultItemsPage />} />
           <Route path="/app-registrations" element={<AppRegistrationsPage />} />
           <Route path="/enterprise-apps" element={<EnterpriseAppsPage />} />

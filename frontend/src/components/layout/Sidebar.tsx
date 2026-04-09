@@ -10,6 +10,7 @@ import {
   Typography,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/DashboardOutlined';
+import RadarIcon from '@mui/icons-material/RadarOutlined';
 import VpnKeyIcon from '@mui/icons-material/VpnKeyOutlined';
 import AppRegistrationIcon from '@mui/icons-material/AppRegistrationOutlined';
 import BusinessIcon from '@mui/icons-material/BusinessOutlined';
@@ -24,6 +25,7 @@ const DRAWER_WIDTH = 220;
 
 const mainNav = [
   { label: 'Dashboard', path: ROUTES.DASHBOARD, icon: <DashboardIcon /> },
+  { label: 'Scans', path: ROUTES.SCANS, icon: <RadarIcon /> },
   { label: 'Key Vault Items', path: ROUTES.KEYVAULT_ITEMS, icon: <VpnKeyIcon /> },
   { label: 'App Registrations', path: ROUTES.APP_REGISTRATIONS, icon: <AppRegistrationIcon /> },
   { label: 'Enterprise Apps', path: ROUTES.ENTERPRISE_APPS, icon: <BusinessIcon /> },

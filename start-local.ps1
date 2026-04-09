@@ -45,12 +45,12 @@ foreach ($port in @(8000, 3000)) {
     $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($conns) {
         foreach ($conn in $conns) {
-            $pid = $conn.OwningProcess
-            if ($pid -and $pid -ne 0) {
-                $proc = Get-Process -Id $pid -ErrorAction SilentlyContinue
+            $procId = $conn.OwningProcess
+            if ($procId -and $procId -ne 0) {
+                $proc = Get-Process -Id $procId -ErrorAction SilentlyContinue
                 if ($proc) {
-                    Write-Info "Killing $($proc.ProcessName) (PID $pid) on port $port"
-                    Stop-Process -Id $pid -Force -ErrorAction SilentlyContinue
+                    Write-Info "Killing $($proc.ProcessName) (PID $procId) on port $port"
+                    Stop-Process -Id $procId -Force -ErrorAction SilentlyContinue
                 }
             }
         }

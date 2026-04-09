@@ -10,6 +10,7 @@ from app.services.scanner.keyvault_scanner import scan_subscription
 from app.services.scanner.graph_scanner import scan_app_registrations, scan_enterprise_apps
 from app.services.notification.engine import evaluate_and_notify
 from app.utils.azure_credential import get_azure_credential
+from app.services.scanner.event_bus import ScanEventBus
 
 logger = logging.getLogger(__name__)
 
@@ -17,22 +18,33 @@ logger = logging.getLogger(__name__)
 SCAN_SEMAPHORE = asyncio.Semaphore(10)
 
 
-async def run_full_scan(triggered_by: str = "system", credential=None) -> dict:
+async def run_full_scan(
+    triggered_by: str = "system",
+    credential=None,
+    scan_id: str | None = None,
+) -> dict:
     """Run a complete scan of all Key Vaults, App Registrations, and Enterprise Apps.
 
     Args:
         triggered_by: User email or "system" for scheduled scans.
         credential: Optional pre-built credential (e.g. DelegatedTokenCredential).
                     Falls back to the service-principal DefaultAzureCredential.
+        scan_id: Optional pre-generated scan ID (used to link SSE streaming).
     """
-    scan_id = str(uuid.uuid4())
+    if scan_id is None:
+        scan_id = str(uuid.uuid4())
+
     now = datetime.now(timezone.utc)
+    cred_mode = "delegated" if credential else "service_principal"
+
+    # Get or create event bus for this scan
+    bus = ScanEventBus.get(scan_id) or ScanEventBus.create(scan_id)
 
     scan_doc = {
         "id": scan_id,
         "status": "running",
         "trigger": "manual" if triggered_by != "system" else "scheduled",
-        "credentialMode": "delegated" if credential else "service_principal",
+        "credentialMode": cred_mode,
         "startedAt": now.isoformat(),
         "completedAt": None,
         "subscriptionsScanned": 0,
@@ -48,11 +60,14 @@ async def run_full_scan(triggered_by: str = "system", credential=None) -> dict:
     scan_history = get_scan_history_container()
     await upsert_item(scan_history, scan_doc)
 
+    await bus.emit("log", f"Scan started by {triggered_by} using {cred_mode} credentials", phase="init")
+
     try:
         if credential is None:
             credential = get_azure_credential()
 
         # Load settings for subscription filter and thresholds
+        await bus.emit("log", "Loading scan settings...", phase="settings")
         settings_container = get_settings_container()
         schedule_settings = await query_items(
             settings_container, "SELECT * FROM c WHERE c.id = 'schedule'"
@@ -69,16 +84,31 @@ async def run_full_scan(triggered_by: str = "system", credential=None) -> dict:
         if threshold_settings:
             tiers = threshold_settings[0].get("tiers", None)
 
+        await bus.emit("log", "Settings loaded", phase="settings")
+
         # 1. Enumerate subscriptions
+        await bus.emit("phase_start", "Enumerating Azure subscriptions...", phase="subscriptions")
         subscriptions = await enumerate_subscriptions(credential, sub_filter or None)
         scan_doc["subscriptionsScanned"] = len(subscriptions)
+        await bus.emit(
+            "phase_complete",
+            f"Found {len(subscriptions)} subscriptions",
+            phase="subscriptions",
+            count=len(subscriptions),
+        )
 
         # 2. Scan Key Vaults per subscription (with concurrency limit)
+        await bus.emit("phase_start", "Scanning Key Vaults across subscriptions...", phase="keyvault")
         items_container = get_items_container()
         all_kv_items = []
 
-        async def scan_sub(sub):
+        async def scan_sub(sub, index):
             async with SCAN_SEMAPHORE:
+                await bus.emit(
+                    "progress",
+                    f"Scanning subscription \"{sub['displayName']}\" ({index}/{len(subscriptions)})...",
+                    phase="keyvault",
+                )
                 return await scan_subscription(
                     credential,
                     sub["subscriptionId"],
@@ -87,7 +117,7 @@ async def run_full_scan(triggered_by: str = "system", credential=None) -> dict:
                     tiers,
                 )
 
-        tasks = [scan_sub(sub) for sub in subscriptions]
+        tasks = [scan_sub(sub, i + 1) for i, sub in enumerate(subscriptions)]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         for i, result in enumerate(results):
@@ -95,37 +125,67 @@ async def run_full_scan(triggered_by: str = "system", credential=None) -> dict:
                 error_msg = f"Error scanning subscription {subscriptions[i]['displayName']}: {result}"
                 logger.error(error_msg)
                 scan_doc["errors"].append(error_msg)
+                await bus.emit("error", error_msg, phase="keyvault")
             else:
                 all_kv_items.extend(result)
+                await bus.emit(
+                    "progress",
+                    f"Found {len(result)} items in \"{subscriptions[i]['displayName']}\"",
+                    phase="keyvault",
+                )
 
         # Upsert Key Vault items
         if all_kv_items:
             await upsert_items_batch(items_container, all_kv_items)
         scan_doc["itemsFound"] += len(all_kv_items)
+        await bus.emit(
+            "phase_complete",
+            f"Key Vault scan complete: {len(all_kv_items)} items from {len(subscriptions)} subscriptions",
+            phase="keyvault",
+            count=len(all_kv_items),
+        )
 
         # 3. Scan App Registrations via Graph API
+        await bus.emit("phase_start", "Scanning App Registrations via Microsoft Graph...", phase="app_registrations")
         try:
             app_reg_items, app_count = await scan_app_registrations(credential, scan_id, tiers)
             scan_doc["appRegistrationsScanned"] = app_count
             if app_reg_items:
                 await upsert_items_batch(items_container, app_reg_items)
             scan_doc["itemsFound"] += len(app_reg_items)
+            await bus.emit(
+                "phase_complete",
+                f"Found {app_count} app registrations with {len(app_reg_items)} credentials",
+                phase="app_registrations",
+                appCount=app_count,
+                credentialCount=len(app_reg_items),
+            )
         except Exception as e:
             error_msg = f"Error scanning app registrations: {e}"
             logger.error(error_msg)
             scan_doc["errors"].append(error_msg)
+            await bus.emit("error", error_msg, phase="app_registrations")
 
         # 4. Scan Enterprise Apps via Graph API
+        await bus.emit("phase_start", "Scanning Enterprise Apps via Microsoft Graph...", phase="enterprise_apps")
         try:
             ent_app_items, ent_count = await scan_enterprise_apps(credential, scan_id, tiers)
             scan_doc["enterpriseAppsScanned"] = ent_count
             if ent_app_items:
                 await upsert_items_batch(items_container, ent_app_items)
             scan_doc["itemsFound"] += len(ent_app_items)
+            await bus.emit(
+                "phase_complete",
+                f"Found {ent_count} enterprise apps with {len(ent_app_items)} credentials",
+                phase="enterprise_apps",
+                appCount=ent_count,
+                credentialCount=len(ent_app_items),
+            )
         except Exception as e:
             error_msg = f"Error scanning enterprise apps: {e}"
             logger.error(error_msg)
             scan_doc["errors"].append(error_msg)
+            await bus.emit("error", error_msg, phase="enterprise_apps")
 
         # 5. Count newly expired items
         all_items = all_kv_items + (app_reg_items if 'app_reg_items' in dir() else []) + (ent_app_items if 'ent_app_items' in dir() else [])
@@ -133,24 +193,38 @@ async def run_full_scan(triggered_by: str = "system", credential=None) -> dict:
         scan_doc["newExpiredFound"] = len(expired)
 
         # 6. Trigger notifications
+        await bus.emit("phase_start", "Evaluating notification rules...", phase="notifications")
         try:
             notification_settings = await query_items(
                 settings_container, "SELECT * FROM c WHERE c.id = 'notifications'"
             )
             if notification_settings:
                 await evaluate_and_notify(all_items, notification_settings[0])
+            await bus.emit("phase_complete", "Notifications processed", phase="notifications")
         except Exception as e:
             logger.error(f"Error sending notifications: {e}")
+            await bus.emit("error", f"Error sending notifications: {e}", phase="notifications")
 
         scan_doc["status"] = "completed"
+        await bus.emit(
+            "complete",
+            f"Scan complete: {scan_doc['itemsFound']} items found, "
+            f"{scan_doc['newExpiredFound']} expired, {len(scan_doc['errors'])} errors",
+            phase="done",
+            itemsFound=scan_doc["itemsFound"],
+            newExpiredFound=scan_doc["newExpiredFound"],
+            errorCount=len(scan_doc["errors"]),
+        )
 
     except Exception as e:
         logger.error(f"Full scan failed: {e}")
         scan_doc["status"] = "failed"
         scan_doc["errors"].append(str(e))
+        await bus.emit("failed", f"Scan failed: {e}", phase="done")
 
     scan_doc["completedAt"] = datetime.now(timezone.utc).isoformat()
     await upsert_item(scan_history, scan_doc)
+    await bus.close()
 
     logger.info(
         f"Scan {scan_id} {scan_doc['status']}: "

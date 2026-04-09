@@ -1,12 +1,43 @@
 import apiClient from './client';
 import { msalInstance } from '../auth/AuthProvider';
 import { authDisabledMode } from '../auth/useAuth';
+import { loginRequest, getApiTokenRequest } from '../auth/msalConfig';
 import type { ScanRun } from '../types';
 
 export interface DelegatedTokens {
   graph?: string;
   management?: string;
   keyvault?: string;
+}
+
+export interface TriggerScanResponse {
+  status: string;
+  scanId: string;
+  message: string;
+}
+
+/**
+ * Get a bearer token string for use in non-axios requests (e.g. SSE fetch).
+ */
+export async function getAuthToken(): Promise<string> {
+  if (authDisabledMode || !msalInstance) return '';
+
+  const account = msalInstance.getActiveAccount() || msalInstance.getAllAccounts()[0];
+  if (!account) return '';
+
+  const apiScopes = getApiTokenRequest();
+  const tokenRequest = apiScopes.scopes.length > 0 ? { ...apiScopes, account } : { ...loginRequest, account };
+  try {
+    const response = await msalInstance.acquireTokenSilent(tokenRequest);
+    return response.accessToken;
+  } catch {
+    try {
+      const response = await msalInstance.acquireTokenSilent({ ...loginRequest, account });
+      return response.idToken;
+    } catch {
+      return '';
+    }
+  }
 }
 
 /**
@@ -52,7 +83,7 @@ export async function acquireDelegatedTokens(): Promise<DelegatedTokens> {
   return { graph, management, keyvault };
 }
 
-export async function triggerScan(useDelegated = false): Promise<{ status: string; message: string }> {
+export async function triggerScan(useDelegated = false): Promise<TriggerScanResponse> {
   let delegatedTokens: DelegatedTokens | undefined;
 
   if (useDelegated) {
@@ -62,6 +93,11 @@ export async function triggerScan(useDelegated = false): Promise<{ status: strin
   const { data } = await apiClient.post('/scans/trigger', {
     delegatedTokens: delegatedTokens || null,
   });
+  return data;
+}
+
+export async function fetchActiveScan(): Promise<{ scanId: string | null; active: boolean }> {
+  const { data } = await apiClient.get('/scans/active');
   return data;
 }
 

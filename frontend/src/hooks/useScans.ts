@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { triggerScan, fetchScanHistory, fetchLatestScan } from '../api/scans';
+import { triggerScan, fetchScanHistory, fetchLatestScan, fetchActiveScan } from '../api/scans';
 
 export function useScanHistory(page = 1) {
   return useQuery({
@@ -13,6 +13,14 @@ export function useLatestScan() {
     queryKey: ['scans', 'latest'],
     queryFn: fetchLatestScan,
     refetchInterval: 30000,
+  });
+}
+
+export function useActiveScan() {
+  return useQuery({
+    queryKey: ['scans', 'active'],
+    queryFn: fetchActiveScan,
+    refetchInterval: 5000,
   });
 }
 

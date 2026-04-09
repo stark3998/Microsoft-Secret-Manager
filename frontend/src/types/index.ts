@@ -151,6 +151,7 @@ export interface ScanRun {
   id: string;
   status: string;
   trigger: string;
+  credentialMode?: string;
   startedAt: string;
   completedAt: string | null;
   subscriptionsScanned: number;
@@ -161,6 +162,14 @@ export interface ScanRun {
   newExpiredFound: number;
   errors: string[];
   triggeredBy: string;
+}
+
+export interface ScanLogEvent {
+  type: 'log' | 'phase_start' | 'phase_complete' | 'progress' | 'error' | 'complete' | 'failed';
+  message: string;
+  timestamp: string;
+  phase: string | null;
+  data: Record<string, unknown>;
 }
 
 export interface SubscriptionInfo {
