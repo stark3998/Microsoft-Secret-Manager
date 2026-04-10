@@ -7,6 +7,7 @@ Each "container" is persisted as a JSON file under the configured data
 directory (default: ``./data``).
 """
 
+import asyncio
 import json
 import logging
 import os
@@ -235,6 +236,9 @@ class LocalContainerProxy:
         self._pk_field = partition_key_path.lstrip("/")
         self._file = os.path.join(data_dir, f"{name}.json")
         self._data: list[dict] = []
+        self._lock = asyncio.Lock()
+        self._dirty = False
+        self._save_task: asyncio.Task | None = None
         self._load()
 
     # -- persistence ---------------------------------------------------------
@@ -246,14 +250,12 @@ class LocalContainerProxy:
         else:
             self._data = []
 
-    def _save(self) -> None:
+    def _write_to_disk(self) -> None:
+        """Write the in-memory data to disk (synchronous, call under lock)."""
         os.makedirs(self._data_dir, exist_ok=True)
         tmp = self._file + ".tmp"
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(self._data, fh, indent=2, default=str)
-        # On Windows, os.replace can fail with WinError 5 (Access denied) when
-        # another thread/process momentarily holds the target file open (e.g.
-        # antivirus, editor, or concurrent reads).  Retry a few times.
         for attempt in range(5):
             try:
                 os.replace(tmp, self._file)
@@ -264,6 +266,44 @@ class LocalContainerProxy:
                 else:
                     raise
 
+    def _schedule_save(self) -> None:
+        """Mark data as dirty and schedule a coalesced write.
+
+        Multiple rapid mutations (e.g. batch upserts during a scan) are
+        coalesced into a single disk write after a short delay, avoiding
+        hundreds of competing file-rename operations.
+        """
+        self._dirty = True
+        if self._save_task is None or self._save_task.done():
+            try:
+                loop = asyncio.get_running_loop()
+                self._save_task = loop.create_task(self._deferred_save())
+            except RuntimeError:
+                # No event loop — write synchronously (startup / tests)
+                self._write_to_disk()
+                self._dirty = False
+
+    async def _deferred_save(self) -> None:
+        """Wait briefly for more mutations, then flush once."""
+        while self._dirty:
+            self._dirty = False
+            await asyncio.sleep(0.1)
+        # Final flush — _dirty may have been set again during sleep
+        async with self._lock:
+            self._write_to_disk()
+
+    async def flush(self) -> None:
+        """Force an immediate write to disk (call after batch operations)."""
+        async with self._lock:
+            if self._save_task and not self._save_task.done():
+                self._save_task.cancel()
+                try:
+                    await self._save_task
+                except asyncio.CancelledError:
+                    pass
+            self._dirty = False
+            self._write_to_disk()
+
     # -- CRUD ----------------------------------------------------------------
 
     def _index_of(self, item_id: str) -> int:
@@ -273,19 +313,21 @@ class LocalContainerProxy:
         return -1
 
     async def create_item(self, body: dict, **kwargs: Any) -> dict:
-        if self._index_of(body.get("id", "")) >= 0:
-            raise CosmosResourceExistsError(message=f"Item '{body['id']}' already exists")
-        self._data.append(body)
-        self._save()
+        async with self._lock:
+            if self._index_of(body.get("id", "")) >= 0:
+                raise CosmosResourceExistsError(message=f"Item '{body['id']}' already exists")
+            self._data.append(body)
+            self._schedule_save()
         return body
 
     async def upsert_item(self, body: dict, **kwargs: Any) -> dict:
-        idx = self._index_of(body.get("id", ""))
-        if idx >= 0:
-            self._data[idx] = body
-        else:
-            self._data.append(body)
-        self._save()
+        async with self._lock:
+            idx = self._index_of(body.get("id", ""))
+            if idx >= 0:
+                self._data[idx] = body
+            else:
+                self._data.append(body)
+            self._schedule_save()
         return body
 
     async def read_item(self, item: str, partition_key: str, **kwargs: Any) -> dict:
@@ -295,10 +337,11 @@ class LocalContainerProxy:
         return self._data[idx]
 
     async def delete_item(self, item: str, partition_key: str, **kwargs: Any) -> None:
-        idx = self._index_of(item)
-        if idx >= 0:
-            self._data.pop(idx)
-            self._save()
+        async with self._lock:
+            idx = self._index_of(item)
+            if idx >= 0:
+                self._data.pop(idx)
+                self._schedule_save()
 
     # -- query ---------------------------------------------------------------
 

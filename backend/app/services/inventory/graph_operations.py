@@ -80,31 +80,47 @@ async def _paginate_graph(
     token: str,
     headers: dict | None = None,
     max_pages: int = 50,
+    on_page=None,
 ) -> list[dict]:
-    """Fetch all pages from a paginated Graph API endpoint."""
+    """Fetch all pages from a paginated Graph API endpoint.
+
+    Args:
+        on_page: Optional async callback ``(page_num, records_so_far, has_more)``
+                 called after each page is fetched.
+    """
+    # Extract the endpoint path for logging (strip query params)
+    endpoint = url.split("?")[0].replace(GRAPH_BETA, "").replace(GRAPH_V1, "")
     all_records: list[dict] = []
     page = 0
 
     while url and page < max_pages:
         page += 1
+        logger.info(f"GET {endpoint} — page {page} ({len(all_records)} records so far)")
         try:
             result = await _graph_request("GET", url, token, headers=headers)
         except httpx.HTTPStatusError as e:
             if e.response.status_code == 403:
                 logger.warning(
-                    f"Permission denied for {url.split('?')[0]} — "
+                    f"Permission denied for {endpoint} — "
                     "data from this endpoint will be unavailable"
                 )
+                if on_page:
+                    await on_page(page, 0, False, f"403 Permission denied: {endpoint}")
                 return []
             raise
 
         if not result:
             break
 
-        all_records.extend(result.get("value", []))
+        page_records = result.get("value", [])
+        all_records.extend(page_records)
         url = result.get("@odata.nextLink")
+        has_more = url is not None
 
-    logger.info(f"Fetched {len(all_records)} records across {page} pages")
+        if on_page:
+            await on_page(page, len(all_records), has_more, None)
+
+    logger.info(f"Fetched {len(all_records)} records across {page} pages from {endpoint}")
     return all_records
 
 
@@ -112,21 +128,14 @@ async def _paginate_graph(
 # Beta: Service Principal Sign-in Activity (pre-aggregated)
 # ---------------------------------------------------------------------------
 
-async def fetch_sp_sign_in_activities(token: str) -> list[dict]:
+async def fetch_sp_sign_in_activities(token: str, on_page=None) -> list[dict]:
     """Fetch pre-aggregated sign-in activity for all service principals.
 
     Uses GET /beta/reports/servicePrincipalSignInActivities which returns
     per-SP last sign-in timestamps without needing to paginate all sign-in logs.
-
-    Each record contains:
-      - appId
-      - lastSignInActivity.lastSignInDateTime
-      - lastSignInActivity.lastNonInteractiveSignInDateTime
-      - delegatedClientSignInActivity.lastSignInDateTime
-      - delegatedClientSignInActivity.lastNonInteractiveSignInDateTime
     """
     url = f"{GRAPH_BETA}/reports/servicePrincipalSignInActivities"
-    records = await _paginate_graph(url, token, max_pages=100)
+    records = await _paginate_graph(url, token, max_pages=100, on_page=on_page)
     logger.info(f"Fetched SP sign-in activities for {len(records)} service principals")
     return records
 
@@ -135,26 +144,14 @@ async def fetch_sp_sign_in_activities(token: str) -> list[dict]:
 # Beta: App Credential Sign-in Activity
 # ---------------------------------------------------------------------------
 
-async def fetch_app_credential_activities(token: str) -> list[dict]:
+async def fetch_app_credential_activities(token: str, on_page=None) -> list[dict]:
     """Fetch sign-in activity per app credential (secret/certificate).
 
     Uses GET /beta/reports/appCredentialSignInActivities which shows
     which specific credentials are being used for sign-in.
-
-    Each record contains:
-      - appId
-      - appObjectId
-      - credentialOrigin (application | servicePrincipal)
-      - expirationDate
-      - keyId
-      - keyType (certificate | secret | unknown)
-      - keyUsage (sign | verify)
-      - resourceId
-      - servicePrincipalObjectId
-      - signInActivity.lastSignInDateTime
     """
     url = f"{GRAPH_BETA}/reports/appCredentialSignInActivities"
-    records = await _paginate_graph(url, token, max_pages=100)
+    records = await _paginate_graph(url, token, max_pages=100, on_page=on_page)
     logger.info(f"Fetched credential activity for {len(records)} credentials")
     return records
 
@@ -167,6 +164,7 @@ async def fetch_sign_ins_bulk(
     token: str,
     since: datetime,
     max_pages: int = 50,
+    on_page=None,
 ) -> list[dict]:
     """Fetch all sign-in logs since a given date via paginated Beta API calls.
 
@@ -194,7 +192,7 @@ async def fetch_sign_ins_bulk(
     )
     headers = {"ConsistencyLevel": "eventual"}
 
-    return await _paginate_graph(url, token, headers=headers, max_pages=max_pages)
+    return await _paginate_graph(url, token, headers=headers, max_pages=max_pages, on_page=on_page)
 
 
 # ---------------------------------------------------------------------------

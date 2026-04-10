@@ -325,46 +325,102 @@ async def scan_app_activity(
     token_result = credential.get_token(GRAPH_SCOPE)
     token = token_result.token
 
-    # 2. Fetch pre-aggregated SP sign-in activities
-    if bus:
-        await bus.emit(
-            "progress",
-            "Fetching service principal sign-in activities (Beta)...",
-            phase="app_inventory",
-        )
-    sp_activities_raw = await fetch_sp_sign_in_activities(token)
-    sp_activities = aggregate_sp_activities(sp_activities_raw)
-    logger.info(f"Got SP activity data for {len(sp_activities)} apps")
+    # Helper: build a page-progress callback that emits to the SSE bus
+    def _make_page_cb(label: str):
+        async def _on_page(page: int, total: int, has_more: bool, error: str | None):
+            if bus:
+                if error:
+                    await bus.emit("progress", f"{label}: {error}", phase="app_inventory")
+                else:
+                    status = "fetching more..." if has_more else "done"
+                    await bus.emit(
+                        "progress",
+                        f"{label}: page {page}, {total} records ({status})",
+                        phase="app_inventory",
+                    )
+        return _on_page
 
-    # 3. Fetch per-credential sign-in activities
-    if bus:
-        await bus.emit(
-            "progress",
-            "Fetching credential sign-in activities (Beta)...",
-            phase="app_inventory",
-        )
-    cred_activities_raw = await fetch_app_credential_activities(token)
-    cred_activities = aggregate_credential_activities(cred_activities_raw)
-    logger.info(f"Got credential activity data for {len(cred_activities)} apps")
+    # Each Graph API step is independent — failures produce warnings, not a full abort.
+    sp_activities: dict[str, dict] = {}
+    cred_activities: dict[str, list[dict]] = {}
+    sign_in_data: dict[str, dict] = {}
+    raw_sign_ins: list[dict] = []
 
-    # 4. Fetch detailed sign-in logs for user breakdown
+    # 2. Fetch pre-aggregated SP sign-in activities (Reports.Read.All — app-only)
     if bus:
         await bus.emit(
             "progress",
-            f"Fetching detailed sign-in logs for last {lookback_days} days (Beta)...",
+            "Fetching SP sign-in activities (/beta/reports/servicePrincipalSignInActivities)...",
             phase="app_inventory",
         )
-    raw_sign_ins = await fetch_sign_ins_bulk(
-        token, since, max_pages=settings.inventory_bulk_max_pages
-    )
+    try:
+        sp_activities_raw = await fetch_sp_sign_in_activities(
+            token, on_page=_make_page_cb("SP sign-in activities"),
+        )
+        sp_activities = aggregate_sp_activities(sp_activities_raw)
+        if bus:
+            await bus.emit(
+                "progress",
+                f"SP sign-in activities: {len(sp_activities)} apps",
+                phase="app_inventory",
+            )
+    except Exception as e:
+        detail = str(e) or repr(e)
+        msg = f"SP sign-in activities unavailable: {detail}"
+        logger.warning(msg, exc_info=True)
+        if bus:
+            await bus.emit("error", msg, phase="app_inventory")
 
+    # 3. Fetch per-credential sign-in activities (Reports.Read.All — app-only)
     if bus:
         await bus.emit(
             "progress",
-            f"Aggregating {len(raw_sign_ins)} sign-in records...",
+            "Fetching credential activities (/beta/reports/appCredentialSignInActivities)...",
             phase="app_inventory",
         )
-    sign_in_data = aggregate_sign_ins(raw_sign_ins)
+    try:
+        cred_activities_raw = await fetch_app_credential_activities(
+            token, on_page=_make_page_cb("Credential activities"),
+        )
+        cred_activities = aggregate_credential_activities(cred_activities_raw)
+        if bus:
+            await bus.emit(
+                "progress",
+                f"Credential activities: {len(cred_activities)} apps",
+                phase="app_inventory",
+            )
+    except Exception as e:
+        detail = str(e) or repr(e)
+        msg = f"Credential sign-in activities unavailable: {detail}"
+        logger.warning(msg, exc_info=True)
+        if bus:
+            await bus.emit("error", msg, phase="app_inventory")
+
+    # 4. Fetch detailed sign-in logs for user breakdown (AuditLog.Read.All)
+    if bus:
+        await bus.emit(
+            "progress",
+            f"Fetching sign-in logs (/beta/auditLogs/signIns, last {lookback_days}d)...",
+            phase="app_inventory",
+        )
+    try:
+        raw_sign_ins = await fetch_sign_ins_bulk(
+            token, since, max_pages=settings.inventory_bulk_max_pages,
+            on_page=_make_page_cb("Sign-in logs"),
+        )
+        if bus:
+            await bus.emit(
+                "progress",
+                f"Aggregating {len(raw_sign_ins)} sign-in records...",
+                phase="app_inventory",
+            )
+        sign_in_data = aggregate_sign_ins(raw_sign_ins)
+    except Exception as e:
+        detail = str(e) or repr(e)
+        msg = f"Detailed sign-in logs unavailable: {detail}"
+        logger.warning(msg, exc_info=True)
+        if bus:
+            await bus.emit("error", msg, phase="app_inventory")
 
     # 5. Load credential summaries from Cosmos
     if bus:

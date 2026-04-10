@@ -4,7 +4,7 @@ import uuid
 from datetime import datetime, timezone
 
 from app.db.cosmos_client import get_items_container, get_scan_history_container, get_settings_container
-from app.db.queries import query_items, upsert_item, upsert_items_batch
+from app.db.queries import query_items, upsert_item, upsert_items_batch, delete_items_by_type
 from app.services.scanner.subscription_scanner import enumerate_subscriptions
 from app.services.scanner.keyvault_scanner import scan_subscription
 from app.services.scanner.graph_scanner import scan_app_registrations, scan_enterprise_apps
@@ -88,6 +88,23 @@ async def run_full_scan(
 
         await bus.emit("log", "Settings loaded", phase="settings")
 
+        # 0. Purge previous scan data (this is a full scan, not incremental)
+        await bus.emit("phase_start", "Clearing previous scan data...", phase="purge")
+        items_container = get_items_container()
+        purge_types = [
+            "secret", "key", "certificate",           # Key Vault items
+            "client_secret",                           # App Registration credentials
+            "saml_certificate",                        # Enterprise App certs
+            "app_inventory",                           # App inventory records
+        ]
+        deleted_count = await delete_items_by_type(items_container, purge_types)
+        await bus.emit(
+            "phase_complete",
+            f"Cleared {deleted_count} items from previous scan",
+            phase="purge",
+            count=deleted_count,
+        )
+
         # 1. Enumerate subscriptions
         await bus.emit("phase_start", "Enumerating Azure subscriptions...", phase="subscriptions")
         subscriptions = await enumerate_subscriptions(credential, sub_filter or None)
@@ -101,7 +118,6 @@ async def run_full_scan(
 
         # 2. Scan Key Vaults per subscription (with concurrency limit)
         await bus.emit("phase_start", "Scanning Key Vaults across subscriptions...", phase="keyvault")
-        items_container = get_items_container()
         all_kv_items = []
         total_vaults_found = 0
         total_vaults_accessible = 0
@@ -230,8 +246,9 @@ async def run_full_scan(
                     count=len(inventory_items),
                 )
             except Exception as e:
-                error_msg = f"Error building app inventory: {e}"
-                logger.error(error_msg)
+                detail = str(e) or repr(e)
+                error_msg = f"Error building app inventory: {type(e).__name__}: {detail}"
+                logger.exception(error_msg)
                 scan_doc["errors"].append(error_msg)
                 await bus.emit("error", error_msg, phase="app_inventory")
 

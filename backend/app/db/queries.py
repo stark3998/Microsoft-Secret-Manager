@@ -61,4 +61,37 @@ async def upsert_items_batch(container: ContainerProxy, items: list[dict]) -> in
     for item in items:
         await container.upsert_item(body=item)
         count += 1
+    # Flush coalesced writes for local file-backed containers
+    if hasattr(container, "flush"):
+        await container.flush()
+    return count
+
+
+async def delete_items_by_type(
+    container: ContainerProxy,
+    item_types: list[str],
+) -> int:
+    """Delete all items matching the given itemType values.
+
+    Used to clear stale data before a full scan replaces it.
+    Returns the number of items deleted.
+    """
+    # Build query to find all items of these types
+    type_list = ", ".join(f"'{t}'" for t in item_types)
+    query = f"SELECT c.id, c.partitionKey FROM c WHERE c.itemType IN ({type_list})"
+    items = await query_items(container, query)
+
+    count = 0
+    for item in items:
+        try:
+            await container.delete_item(
+                item=item["id"],
+                partition_key=item.get("partitionKey", item["id"]),
+            )
+            count += 1
+        except Exception:
+            pass  # Item may already be gone
+    # Flush coalesced writes for local file-backed containers
+    if hasattr(container, "flush"):
+        await container.flush()
     return count
