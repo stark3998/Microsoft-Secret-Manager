@@ -16,20 +16,26 @@ from app.services.scheduler import start_scheduler, stop_scheduler
 from app.utils.telemetry import setup_telemetry
 
 # ---------------------------------------------------------------------------
-# Logging — configure BEFORE any getLogger calls create child loggers
+# Logging — configure the "app" logger directly so uvicorn cannot override it
 # ---------------------------------------------------------------------------
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
+_log_formatter = logging.Formatter(
+    "%(asctime)s  %(levelname)-8s  %(name)s  %(message)s",
     datefmt="%H:%M:%S",
-    stream=sys.stdout,
-    force=True,
 )
+_log_handler = logging.StreamHandler(sys.stdout)
+_log_handler.setFormatter(_log_formatter)
+
+_app_logger = logging.getLogger("app")
+_app_logger.setLevel(logging.INFO)
+_app_logger.addHandler(_log_handler)
+_app_logger.propagate = False  # Don't duplicate into uvicorn's root handler
+
 # Quiet noisy libraries
-logging.getLogger("azure.core.pipeline.policies.http_logging_policy").setLevel(logging.WARNING)
-logging.getLogger("azure.identity").setLevel(logging.WARNING)
-logging.getLogger("httpx").setLevel(logging.WARNING)
-logging.getLogger("httpcore").setLevel(logging.WARNING)
+for _name in (
+    "azure.core.pipeline.policies.http_logging_policy",
+    "azure.identity", "httpx", "httpcore",
+):
+    logging.getLogger(_name).setLevel(logging.WARNING)
 
 logger = logging.getLogger(__name__)
 
