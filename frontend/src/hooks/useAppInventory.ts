@@ -32,6 +32,8 @@ export function useAppSignIns(appId: string, days?: number) {
     queryKey: ['app-sign-ins', appId, days],
     queryFn: () => fetchAppSignIns(appId, days),
     enabled: !!appId,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
   });
 }
 
@@ -40,6 +42,8 @@ export function useAppGraphRaw(appId: string) {
     queryKey: ['app-graph-raw', appId],
     queryFn: () => fetchAppGraphRaw(appId),
     enabled: !!appId,
+    retry: false,
+    staleTime: 5 * 60 * 1000,
   });
 }
 

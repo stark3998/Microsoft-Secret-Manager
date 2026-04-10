@@ -283,15 +283,30 @@ export function ProfilePage() {
 
   const claims = (account?.idTokenClaims ?? {}) as Record<string, unknown>;
 
-  // Acquire tokens using current scopes (silent, from cache)
+  // Acquire tokens using current scopes (silent first, interactive fallback for consent errors)
   const acquireTokens = useCallback(async (forceRefresh = false) => {
     if (!instance || !account) return;
     setTokenError('');
 
+    // Helper: true if the error requires interactive sign-in (consent, MFA, etc.)
+    const needsInteraction = (e: unknown): boolean => {
+      const msg = e instanceof Error ? e.message : String(e);
+      return /AADSTS65001|AADSTS50076|AADSTS50079|interaction_required|consent_required|login_required/i.test(msg);
+    };
+
     // ID token
     try {
       const scopes = idScopes.split(/[\s,]+/).filter(Boolean);
-      const response = await instance.acquireTokenSilent({ scopes, account, forceRefresh });
+      let response;
+      try {
+        response = await instance.acquireTokenSilent({ scopes, account, forceRefresh });
+      } catch (silentErr) {
+        if (needsInteraction(silentErr)) {
+          response = await instance.acquireTokenPopup({ scopes, account });
+        } else {
+          throw silentErr;
+        }
+      }
       setIdToken(response.idToken || null);
     } catch (e) {
       setIdToken(null);
@@ -302,7 +317,16 @@ export function ProfilePage() {
     try {
       const scopes = accessScopes.split(/[\s,]+/).filter(Boolean);
       if (scopes.length > 0) {
-        const response = await instance.acquireTokenSilent({ scopes, account, forceRefresh });
+        let response;
+        try {
+          response = await instance.acquireTokenSilent({ scopes, account, forceRefresh });
+        } catch (silentErr) {
+          if (needsInteraction(silentErr)) {
+            response = await instance.acquireTokenPopup({ scopes, account });
+          } else {
+            throw silentErr;
+          }
+        }
         setAccessToken(response.accessToken || null);
       } else {
         setAccessToken(null);

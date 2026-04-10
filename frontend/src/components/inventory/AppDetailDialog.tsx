@@ -329,7 +329,7 @@ function UsersTab({ item }: { item: AppInventoryRecord }) {
 }
 
 function SignInsTab({ appId }: { appId: string }) {
-  const { data, isLoading } = useAppSignIns(appId);
+  const { data, isLoading, error } = useAppSignIns(appId);
   const [expanded, setExpanded] = useState<string | null>(null);
 
   if (isLoading) {
@@ -337,6 +337,16 @@ function SignInsTab({ appId }: { appId: string }) {
       <Box sx={{ py: 4, textAlign: 'center' }}>
         <CircularProgress size={20} />
         <Typography sx={{ mt: 1, fontSize: '0.8125rem', color: '#605E5C' }}>Loading sign-in logs...</Typography>
+      </Box>
+    );
+  }
+
+  if (error) {
+    const errMsg = error instanceof Error ? error.message : String(error);
+    return (
+      <Box sx={{ py: 4, textAlign: 'center' }}>
+        <Typography sx={{ color: '#D13438', fontSize: '0.8125rem', mb: 1 }}>Failed to fetch sign-in logs.</Typography>
+        <Typography sx={{ color: '#605E5C', fontSize: '0.75rem', fontFamily: 'monospace' }}>{errMsg}</Typography>
       </Box>
     );
   }

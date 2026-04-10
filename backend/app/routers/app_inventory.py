@@ -159,8 +159,12 @@ async def get_app_sign_ins(
     token: str = Depends(_resolve_graph_token),
 ):
     """Fetch recent sign-in logs for a specific app from Graph API."""
-    sign_ins = await fetch_sign_in_details(token, app_id, days)
-    return {"items": sign_ins, "count": len(sign_ins), "appId": app_id}
+    try:
+        sign_ins = await fetch_sign_in_details(token, app_id, days)
+        return {"items": sign_ins, "count": len(sign_ins), "appId": app_id}
+    except Exception as e:
+        logger.exception(f"Failed to fetch sign-ins for {app_id}")
+        raise HTTPException(status_code=502, detail=f"Graph API error: {e}")
 
 
 # ---------------------------------------------------------------------------
@@ -174,7 +178,11 @@ async def get_app_graph_raw(
     token: str = Depends(_resolve_graph_token),
 ):
     """Fetch raw Graph API responses for an app (registration, SP, activity)."""
-    return await fetch_app_graph_raw(token, app_id)
+    try:
+        return await fetch_app_graph_raw(token, app_id)
+    except Exception as e:
+        logger.exception(f"Failed to fetch graph-raw for {app_id}")
+        raise HTTPException(status_code=502, detail=f"Graph API error: {e}")
 
 
 # ---------------------------------------------------------------------------

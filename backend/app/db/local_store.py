@@ -11,6 +11,8 @@ import json
 import logging
 import os
 import re
+import sys
+import time
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -249,7 +251,18 @@ class LocalContainerProxy:
         tmp = self._file + ".tmp"
         with open(tmp, "w", encoding="utf-8") as fh:
             json.dump(self._data, fh, indent=2, default=str)
-        os.replace(tmp, self._file)
+        # On Windows, os.replace can fail with WinError 5 (Access denied) when
+        # another thread/process momentarily holds the target file open (e.g.
+        # antivirus, editor, or concurrent reads).  Retry a few times.
+        for attempt in range(5):
+            try:
+                os.replace(tmp, self._file)
+                return
+            except PermissionError:
+                if sys.platform == "win32" and attempt < 4:
+                    time.sleep(0.05 * (attempt + 1))
+                else:
+                    raise
 
     # -- CRUD ----------------------------------------------------------------
 

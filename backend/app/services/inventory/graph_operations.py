@@ -308,89 +308,104 @@ async def fetch_app_graph_raw(token: str, app_id: str) -> dict:
     """Fetch raw Graph API responses for an app.
 
     Returns the unmodified JSON from multiple Beta endpoints.
-    Each section handles errors independently — a 403 on one endpoint
-    won't block the others.
+    All calls run in parallel for speed; each handles errors independently
+    so a 403 on one endpoint won't block the others.
     """
-    results: dict = {}
     since = datetime.now(timezone.utc) - timedelta(days=30)
     since_str = since.strftime("%Y-%m-%dT%H:%M:%SZ")
 
-    # App Registration
-    try:
-        url = f"{GRAPH_BETA}/applications?$filter=appId eq '{app_id}'"
-        headers = {"ConsistencyLevel": "eventual"}
-        resp = await _graph_request("GET", url, token, headers=headers)
-        values = resp.get("value", []) if resp else []
-        results["application"] = values[0] if values else None
-    except Exception as e:
-        results["application"] = _format_graph_error(e, "/beta/applications")
+    async def _fetch_application():
+        try:
+            url = f"{GRAPH_BETA}/applications?$filter=appId eq '{app_id}'"
+            resp = await _graph_request("GET", url, token, headers={"ConsistencyLevel": "eventual"})
+            values = resp.get("value", []) if resp else []
+            return values[0] if values else None
+        except Exception as e:
+            return _format_graph_error(e, "/beta/applications")
 
-    # Service Principal
-    try:
-        url = f"{GRAPH_BETA}/servicePrincipals?$filter=appId eq '{app_id}'"
-        headers = {"ConsistencyLevel": "eventual"}
-        resp = await _graph_request("GET", url, token, headers=headers)
-        values = resp.get("value", []) if resp else []
-        results["servicePrincipal"] = values[0] if values else None
-    except Exception as e:
-        results["servicePrincipal"] = _format_graph_error(e, "/beta/servicePrincipals")
+    async def _fetch_service_principal():
+        try:
+            url = f"{GRAPH_BETA}/servicePrincipals?$filter=appId eq '{app_id}'"
+            resp = await _graph_request("GET", url, token, headers={"ConsistencyLevel": "eventual"})
+            values = resp.get("value", []) if resp else []
+            return values[0] if values else None
+        except Exception as e:
+            return _format_graph_error(e, "/beta/servicePrincipals")
 
-    # Recent sign-in logs (delegated-friendly — AuditLog.Read.All)
-    try:
-        url = (
-            f"{GRAPH_BETA}/auditLogs/signIns"
-            f"?$filter=appId eq '{app_id}' and createdDateTime ge {since_str}"
-            f"&$top=25&$orderby=createdDateTime desc"
-        )
-        headers = {"ConsistencyLevel": "eventual"}
-        resp = await _graph_request("GET", url, token, headers=headers)
-        results["recentSignIns"] = resp.get("value", []) if resp else []
-    except Exception as e:
-        results["recentSignIns"] = _format_graph_error(e, "/beta/auditLogs/signIns")
+    async def _fetch_recent_sign_ins():
+        try:
+            url = (
+                f"{GRAPH_BETA}/auditLogs/signIns"
+                f"?$filter=appId eq '{app_id}' and createdDateTime ge {since_str}"
+                f"&$top=25&$orderby=createdDateTime desc"
+            )
+            resp = await _graph_request("GET", url, token, headers={"ConsistencyLevel": "eventual"})
+            return resp.get("value", []) if resp else []
+        except Exception as e:
+            return _format_graph_error(e, "/beta/auditLogs/signIns")
 
-    # Directory audit logs (delegated-friendly — AuditLog.Read.All)
-    try:
-        url = (
-            f"{GRAPH_BETA}/auditLogs/directoryAudits"
-            f"?$filter=activityDateTime ge {since_str}"
-            f" and targetResources/any(r: r/id eq '{app_id}')"
-            f"&$top=25&$orderby=activityDateTime desc"
-        )
-        headers = {"ConsistencyLevel": "eventual"}
-        resp = await _graph_request("GET", url, token, headers=headers)
-        results["directoryAuditLogs"] = resp.get("value", []) if resp else []
-    except Exception as e:
-        results["directoryAuditLogs"] = _format_graph_error(e, "/beta/auditLogs/directoryAudits")
+    async def _fetch_directory_audits():
+        try:
+            url = (
+                f"{GRAPH_BETA}/auditLogs/directoryAudits"
+                f"?$filter=activityDateTime ge {since_str}"
+                f" and targetResources/any(r: r/id eq '{app_id}')"
+                f"&$top=25&$orderby=activityDateTime desc"
+            )
+            resp = await _graph_request("GET", url, token, headers={"ConsistencyLevel": "eventual"})
+            return resp.get("value", []) if resp else []
+        except Exception as e:
+            return _format_graph_error(e, "/beta/auditLogs/directoryAudits")
 
-    # SP Sign-in Activity (requires Reports.Read.All — application-only)
-    try:
-        url = (
-            f"{GRAPH_BETA}/reports/servicePrincipalSignInActivities"
-            f"?$filter=appId eq '{app_id}'"
-        )
-        resp = await _graph_request("GET", url, token)
-        values = resp.get("value", []) if resp else []
-        results["servicePrincipalSignInActivity"] = values[0] if values else None
-    except Exception as e:
-        results["servicePrincipalSignInActivity"] = _format_graph_error(
-            e, "/beta/reports/servicePrincipalSignInActivities"
-        )
+    async def _fetch_sp_sign_in_activity():
+        try:
+            url = (
+                f"{GRAPH_BETA}/reports/servicePrincipalSignInActivities"
+                f"?$filter=appId eq '{app_id}'"
+            )
+            resp = await _graph_request("GET", url, token)
+            values = resp.get("value", []) if resp else []
+            return values[0] if values else None
+        except Exception as e:
+            return _format_graph_error(e, "/beta/reports/servicePrincipalSignInActivities")
 
-    # Credential Sign-in Activity (requires Reports.Read.All — application-only)
-    try:
-        url = (
-            f"{GRAPH_BETA}/reports/appCredentialSignInActivities"
-            f"?$filter=appId eq '{app_id}'"
-        )
-        resp = await _graph_request("GET", url, token)
-        values = resp.get("value", []) if resp else []
-        results["appCredentialSignInActivities"] = values
-    except Exception as e:
-        results["appCredentialSignInActivities"] = _format_graph_error(
-            e, "/beta/reports/appCredentialSignInActivities"
-        )
+    async def _fetch_credential_activities():
+        try:
+            url = (
+                f"{GRAPH_BETA}/reports/appCredentialSignInActivities"
+                f"?$filter=appId eq '{app_id}'"
+            )
+            resp = await _graph_request("GET", url, token)
+            values = resp.get("value", []) if resp else []
+            return values
+        except Exception as e:
+            return _format_graph_error(e, "/beta/reports/appCredentialSignInActivities")
 
-    return results
+    # Run all 6 calls in parallel
+    (
+        application,
+        service_principal,
+        recent_sign_ins,
+        directory_audits,
+        sp_sign_in_activity,
+        credential_activities,
+    ) = await asyncio.gather(
+        _fetch_application(),
+        _fetch_service_principal(),
+        _fetch_recent_sign_ins(),
+        _fetch_directory_audits(),
+        _fetch_sp_sign_in_activity(),
+        _fetch_credential_activities(),
+    )
+
+    return {
+        "application": application,
+        "servicePrincipal": service_principal,
+        "recentSignIns": recent_sign_ins,
+        "directoryAuditLogs": directory_audits,
+        "servicePrincipalSignInActivity": sp_sign_in_activity,
+        "appCredentialSignInActivities": credential_activities,
+    }
 
 
 # ---------------------------------------------------------------------------
