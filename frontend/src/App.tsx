@@ -10,6 +10,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { KeyVaultItemsPage } from './pages/KeyVaultItemsPage';
 import { AppRegistrationsPage } from './pages/AppRegistrationsPage';
 import { EnterpriseAppsPage } from './pages/EnterpriseAppsPage';
+import { AppInventoryPage } from './pages/AppInventoryPage';
 import { SettingsPage } from './pages/SettingsPage';
 import { CertificatesPage } from './pages/CertificatesPage';
 import { SamlRotationPage } from './pages/SamlRotationPage';
@@ -269,6 +270,7 @@ function AppRoutes() {
           <Route path="/keyvault-items" element={<KeyVaultItemsPage />} />
           <Route path="/app-registrations" element={<AppRegistrationsPage />} />
           <Route path="/enterprise-apps" element={<EnterpriseAppsPage />} />
+          <Route path="/app-inventory" element={<AppInventoryPage />} />
           <Route
             path="/certificates"
             element={

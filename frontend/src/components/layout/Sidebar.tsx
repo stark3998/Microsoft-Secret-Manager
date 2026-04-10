@@ -15,6 +15,7 @@ import RadarIcon from '@mui/icons-material/RadarOutlined';
 import VpnKeyIcon from '@mui/icons-material/VpnKeyOutlined';
 import AppRegistrationIcon from '@mui/icons-material/AppRegistrationOutlined';
 import BusinessIcon from '@mui/icons-material/BusinessOutlined';
+import Inventory2Icon from '@mui/icons-material/Inventory2Outlined';
 import SecurityIcon from '@mui/icons-material/SecurityOutlined';
 import AutorenewIcon from '@mui/icons-material/AutorenewOutlined';
 import WebhookIcon from '@mui/icons-material/WebhookOutlined';
@@ -30,6 +31,7 @@ const mainNav = [
   { label: 'Key Vault Items', path: ROUTES.KEYVAULT_ITEMS, icon: <VpnKeyIcon /> },
   { label: 'App Registrations', path: ROUTES.APP_REGISTRATIONS, icon: <AppRegistrationIcon /> },
   { label: 'Enterprise Apps', path: ROUTES.ENTERPRISE_APPS, icon: <BusinessIcon /> },
+  { label: 'App Inventory', path: ROUTES.APP_INVENTORY, icon: <Inventory2Icon /> },
 ];
 
 const adminNav = [

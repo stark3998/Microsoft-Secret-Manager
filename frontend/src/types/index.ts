@@ -159,6 +159,7 @@ export interface ScanRun {
   itemsFound: number;
   appRegistrationsScanned: number;
   enterpriseAppsScanned: number;
+  inventoryAppsScanned: number;
   newExpiredFound: number;
   errors: string[];
   triggeredBy: string;
@@ -304,4 +305,111 @@ export interface SamlRotationSettings {
   spMetadataRefreshCapable: string[];
   updatedBy: string;
   updatedAt: string | null;
+}
+
+// App Inventory types
+export type ActivityClassification = 'active' | 'low_activity' | 'inactive' | 'zombie' | 'disabled';
+
+export interface AppInventoryRecord {
+  id: string;
+  partitionKey: string;
+  itemType: string;
+  appId: string;
+  appObjectId: string;
+  servicePrincipalId: string;
+  appDisplayName: string;
+  appType: string;
+  accountEnabled: boolean;
+  totalSecrets: number;
+  activeSecrets: number;
+  expiredSecrets: number;
+  totalCertificates: number;
+  activeCertificates: number;
+  expiredCertificates: number;
+  nearestExpiry: string | null;
+  signInCount30d: number;
+  interactiveSignInCount: number;
+  nonInteractiveSignInCount: number;
+  servicePrincipalSignInCount: number;
+  managedIdentitySignInCount: number;
+  failedSignInCount: number;
+  lastSignInAt: string | null;
+  uniqueUsers30d: number;
+  topUsers: Array<{ userPrincipalName: string; displayName: string; count: number }>;
+  topLocations: Array<{ location: string; count: number }>;
+  topBrowsers: Array<{ browser: string; count: number }>;
+  topClientApps: Array<{ clientApp: string; count: number }>;
+  spLastSignIn: string | null;
+  appClientLastSignIn: string | null;
+  appResourceLastSignIn: string | null;
+  delegatedClientLastSignIn: string | null;
+  delegatedResourceLastSignIn: string | null;
+  credentialActivities: Array<{
+    keyId: string;
+    keyType: string;
+    credentialOrigin: string;
+    lastSignIn: string | null;
+    expirationDate: string | null;
+    resourceId: string;
+  }>;
+  activityClassification: ActivityClassification;
+  lastActivityScannedAt: string | null;
+  scanRunId: string;
+  lastScannedAt: string | null;
+}
+
+export interface InventorySummary {
+  total: number;
+  active: number;
+  lowActivity: number;
+  inactive: number;
+  zombie: number;
+  disabled: number;
+}
+
+export interface AppSignInRecord {
+  id: string;
+  appId: string;
+  appDisplayName: string;
+  userPrincipalName: string;
+  userDisplayName: string;
+  userId: string;
+  createdDateTime: string;
+  status: { errorCode: number; failureReason: string };
+  signInEventTypes: string[];
+  ipAddress: string;
+  clientAppUsed: string;
+  resourceDisplayName: string;
+  isInteractive: boolean;
+  userAgent: string;
+  deviceDetail: {
+    browser: string;
+    operatingSystem: string;
+    displayName: string;
+  };
+  location: {
+    city: string;
+    state: string;
+    countryOrRegion: string;
+  };
+  riskDetail: string;
+  riskLevelDuringSignIn: string;
+  conditionalAccessStatus: string;
+}
+
+export interface DisableAppAction {
+  id: string;
+  appId: string;
+  servicePrincipalId: string;
+  appDisplayName: string;
+  state: string;
+  previousEnabledState: boolean;
+  initiatedAt: string;
+  initiatedBy: string;
+  completedAt: string | null;
+  failedAt: string | null;
+  failureReason: string;
+  revertedAt: string | null;
+  revertedBy: string;
+  history: Array<{ action: string; at: string; by?: string; details?: string }>;
 }

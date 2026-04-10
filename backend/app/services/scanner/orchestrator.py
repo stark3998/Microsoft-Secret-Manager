@@ -8,6 +8,7 @@ from app.db.queries import query_items, upsert_item, upsert_items_batch
 from app.services.scanner.subscription_scanner import enumerate_subscriptions
 from app.services.scanner.keyvault_scanner import scan_subscription
 from app.services.scanner.graph_scanner import scan_app_registrations, scan_enterprise_apps
+from app.services.scanner.activity_scanner import scan_app_activity
 from app.services.notification.engine import evaluate_and_notify
 from app.utils.azure_credential import get_azure_credential
 from app.services.scanner.event_bus import ScanEventBus
@@ -52,6 +53,7 @@ async def run_full_scan(
         "itemsFound": 0,
         "appRegistrationsScanned": 0,
         "enterpriseAppsScanned": 0,
+        "inventoryAppsScanned": 0,
         "newExpiredFound": 0,
         "errors": [],
         "triggeredBy": triggered_by,
@@ -169,7 +171,7 @@ async def run_full_scan(
         # 4. Scan Enterprise Apps via Graph API
         await bus.emit("phase_start", "Scanning Enterprise Apps via Microsoft Graph...", phase="enterprise_apps")
         try:
-            ent_app_items, ent_count = await scan_enterprise_apps(credential, scan_id, tiers)
+            ent_app_items, ent_count, _sp_metadata = await scan_enterprise_apps(credential, scan_id, tiers)
             scan_doc["enterpriseAppsScanned"] = ent_count
             if ent_app_items:
                 await upsert_items_batch(items_container, ent_app_items)
@@ -187,12 +189,33 @@ async def run_full_scan(
             scan_doc["errors"].append(error_msg)
             await bus.emit("error", error_msg, phase="enterprise_apps")
 
-        # 5. Count newly expired items
+        # 5. Build App Inventory (activity scanning)
+        from app.config import settings as app_settings
+        if app_settings.inventory_scan_enabled:
+            await bus.emit("phase_start", "Building app inventory and scanning activity...", phase="app_inventory")
+            try:
+                inventory_items = await scan_app_activity(credential, scan_id, bus=bus)
+                if inventory_items:
+                    await upsert_items_batch(items_container, inventory_items)
+                scan_doc["inventoryAppsScanned"] = len(inventory_items)
+                await bus.emit(
+                    "phase_complete",
+                    f"Built inventory for {len(inventory_items)} apps",
+                    phase="app_inventory",
+                    count=len(inventory_items),
+                )
+            except Exception as e:
+                error_msg = f"Error building app inventory: {e}"
+                logger.error(error_msg)
+                scan_doc["errors"].append(error_msg)
+                await bus.emit("error", error_msg, phase="app_inventory")
+
+        # 6. Count newly expired items
         all_items = all_kv_items + (app_reg_items if 'app_reg_items' in dir() else []) + (ent_app_items if 'ent_app_items' in dir() else [])
         expired = [i for i in all_items if i.get("expirationStatus") == "expired"]
         scan_doc["newExpiredFound"] = len(expired)
 
-        # 6. Trigger notifications
+        # 7. Trigger notifications
         await bus.emit("phase_start", "Evaluating notification rules...", phase="notifications")
         try:
             notification_settings = await query_items(

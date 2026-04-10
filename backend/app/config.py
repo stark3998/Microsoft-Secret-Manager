@@ -78,6 +78,12 @@ class Settings(BaseSettings):
     saml_rotation_cron: str = "0 8 * * *"  # Daily at 8 AM
     saml_new_cert_validity_years: int = 3
 
+    # App Inventory / Activity Scanning
+    inventory_scan_enabled: bool = True
+    inventory_sign_in_lookback_days: int = 30
+    inventory_low_activity_threshold: int = 5  # sign-ins below this = low_activity
+    inventory_bulk_max_pages: int = 50  # max Graph API pages for sign-in bulk fetch
+
     # Observability
     applicationinsights_connection_string: str = ""
     otel_exporter_otlp_endpoint: str = ""

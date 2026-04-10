@@ -101,14 +101,16 @@ async def scan_enterprise_apps(
     credential: DefaultAzureCredential,
     scan_run_id: str,
     tiers: list[dict] | None = None,
-) -> tuple[list[dict], int]:
+) -> tuple[list[dict], int, dict[str, dict]]:
     """Scan Enterprise Applications (Service Principals) for SAML/signing certificates.
 
-    Returns (items, app_count).
+    Returns (items, app_count, sp_metadata).
+    sp_metadata maps appId -> {servicePrincipalId, accountEnabled, displayName}.
     """
     graph_client = GraphServiceClient(credential)
     items = []
     app_count = 0
+    sp_metadata: dict[str, dict] = {}
 
     try:
         result = await graph_client.service_principals.get()
@@ -120,6 +122,15 @@ async def scan_enterprise_apps(
                 sp_id = sp.id or ""
                 app_id = sp.app_id or ""
                 display_name = sp.display_name or ""
+                account_enabled = sp.account_enabled if sp.account_enabled is not None else True
+
+                # Collect SP metadata for inventory
+                if app_id:
+                    sp_metadata[app_id] = {
+                        "servicePrincipalId": sp_id,
+                        "accountEnabled": account_enabled,
+                        "displayName": display_name,
+                    }
 
                 # Process key credentials (certificates)
                 for cred in (sp.key_credentials or []):
@@ -135,6 +146,7 @@ async def scan_enterprise_apps(
                         "servicePrincipalId": sp_id,
                         "appId": app_id,
                         "appDisplayName": display_name,
+                        "accountEnabled": account_enabled,
                         "credentialId": str(cred.key_id) if cred.key_id else "",
                         "certType": cred.usage or "",
                         "thumbprint": cred.custom_key_identifier.hex() if cred.custom_key_identifier else "",
@@ -161,6 +173,7 @@ async def scan_enterprise_apps(
                         "servicePrincipalId": sp_id,
                         "appId": app_id,
                         "appDisplayName": display_name,
+                        "accountEnabled": account_enabled,
                         "credentialId": str(cred.key_id) if cred.key_id else "",
                         "credentialDisplayName": cred.display_name or "",
                         "expiresOn": expires_on.isoformat() if expires_on else None,
@@ -181,4 +194,4 @@ async def scan_enterprise_apps(
         logger.error(f"Error scanning enterprise apps: {e}")
 
     logger.info(f"Scanned {app_count} enterprise apps, found {len(items)} credentials")
-    return items, app_count
+    return items, app_count, sp_metadata

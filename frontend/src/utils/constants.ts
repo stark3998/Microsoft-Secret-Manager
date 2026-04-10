@@ -4,6 +4,7 @@ export const ROUTES = {
   KEYVAULT_ITEMS: '/keyvault-items',
   APP_REGISTRATIONS: '/app-registrations',
   ENTERPRISE_APPS: '/enterprise-apps',
+  APP_INVENTORY: '/app-inventory',
   CERTIFICATES: '/certificates',
   SAML_ROTATION: '/saml-rotation',
   EVENTGRID_CONFIG: '/eventgrid-config',
@@ -61,4 +62,20 @@ export const ROTATION_STATE_LABELS: Record<string, string> = {
   completed: 'Completed',
   cancelled: 'Cancelled',
   failed: 'Failed',
+};
+
+export const ACTIVITY_COLORS: Record<string, string> = {
+  active: '#107C10',
+  low_activity: '#F7630C',
+  inactive: '#D83B01',
+  zombie: '#D13438',
+  disabled: '#8A8886',
+};
+
+export const ACTIVITY_LABELS: Record<string, string> = {
+  active: 'Active',
+  low_activity: 'Low Activity',
+  inactive: 'Inactive',
+  zombie: 'Zombie',
+  disabled: 'Disabled',
 };
