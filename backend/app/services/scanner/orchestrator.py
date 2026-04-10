@@ -103,6 +103,8 @@ async def run_full_scan(
         await bus.emit("phase_start", "Scanning Key Vaults across subscriptions...", phase="keyvault")
         items_container = get_items_container()
         all_kv_items = []
+        total_vaults_found = 0
+        total_vaults_accessible = 0
 
         async def scan_sub(sub, index):
             async with SCAN_SEMAPHORE:
@@ -129,10 +131,23 @@ async def run_full_scan(
                 scan_doc["errors"].append(error_msg)
                 await bus.emit("error", error_msg, phase="keyvault")
             else:
-                all_kv_items.extend(result)
+                all_kv_items.extend(result.items)
+                total_vaults_found += result.vaults_found
+                total_vaults_accessible += result.vaults_accessible
+
+                # Surface vault-level warnings (access denied, etc.)
+                for warning in result.warnings:
+                    scan_doc["errors"].append(warning)
+                    await bus.emit("error", warning, phase="keyvault")
+
+                denied = result.vaults_found - result.vaults_accessible
+                status_detail = f"{result.vaults_found} vaults"
+                if denied > 0:
+                    status_detail += f" ({denied} access denied)"
+
                 await bus.emit(
                     "progress",
-                    f"Found {len(result)} items in \"{subscriptions[i]['displayName']}\"",
+                    f"\"{subscriptions[i]['displayName']}\": {status_detail}, {len(result.items)} items",
                     phase="keyvault",
                 )
 
@@ -140,9 +155,19 @@ async def run_full_scan(
         if all_kv_items:
             await upsert_items_batch(items_container, all_kv_items)
         scan_doc["itemsFound"] += len(all_kv_items)
+        scan_doc["vaultsScanned"] = total_vaults_accessible
+
+        denied_total = total_vaults_found - total_vaults_accessible
+        complete_msg = (
+            f"Key Vault scan complete: {len(all_kv_items)} items from "
+            f"{total_vaults_accessible}/{total_vaults_found} vaults "
+            f"across {len(subscriptions)} subscriptions"
+        )
+        if denied_total > 0:
+            complete_msg += f" ({denied_total} vaults denied — check RBAC)"
         await bus.emit(
             "phase_complete",
-            f"Key Vault scan complete: {len(all_kv_items)} items from {len(subscriptions)} subscriptions",
+            complete_msg,
             phase="keyvault",
             count=len(all_kv_items),
         )

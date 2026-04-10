@@ -13,15 +13,25 @@ from app.services.expiration import compute_expiration_status
 logger = logging.getLogger(__name__)
 
 
+class ScanResult:
+    """Holds items found plus any warnings to surface in the scan log."""
+
+    def __init__(self):
+        self.items: list[dict] = []
+        self.warnings: list[str] = []
+        self.vaults_found: int = 0
+        self.vaults_accessible: int = 0
+
+
 async def scan_subscription(
     credential: DefaultAzureCredential,
     subscription_id: str,
     subscription_name: str,
     scan_run_id: str,
     tiers: list[dict] | None = None,
-) -> list[dict]:
+) -> ScanResult:
     """Scan all Key Vaults in a subscription for secrets, keys, and certificates."""
-    items = []
+    result = ScanResult()
 
     # List all Key Vaults in the subscription
     kv_mgmt = KeyVaultManagementClient(credential, subscription_id)
@@ -29,7 +39,10 @@ async def scan_subscription(
     for vault in kv_mgmt.vaults.list_by_subscription():
         vaults.append(vault)
 
+    result.vaults_found = len(vaults)
     logger.info(f"Found {len(vaults)} vaults in subscription {subscription_name}")
+
+    vaults_denied = 0
 
     for vault in vaults:
         vault_uri = vault.properties.vault_uri
@@ -42,26 +55,53 @@ async def scan_subscription(
                 credential, vault_uri, vault_name, subscription_id,
                 subscription_name, resource_group, scan_run_id, tiers,
             )
-            items.extend(secret_items)
+            result.items.extend(secret_items)
 
             # Scan keys
             key_items = await _scan_keys(
                 credential, vault_uri, vault_name, subscription_id,
                 subscription_name, resource_group, scan_run_id, tiers,
             )
-            items.extend(key_items)
+            result.items.extend(key_items)
 
             # Scan certificates
             cert_items = await _scan_certificates(
                 credential, vault_uri, vault_name, subscription_id,
                 subscription_name, resource_group, scan_run_id, tiers,
             )
-            items.extend(cert_items)
+            result.items.extend(cert_items)
+
+            logger.info(
+                f"Vault {vault_name}: {len(secret_items)} secrets, "
+                f"{len(key_items)} keys, {len(cert_items)} certs"
+            )
+            result.vaults_accessible += 1
 
         except Exception as e:
-            logger.error(f"Error scanning vault {vault_name}: {e}")
+            error_str = str(e)
+            if "403" in error_str or "Forbidden" in error_str or "AccessDenied" in error_str:
+                msg = (
+                    f"Access denied to vault \"{vault_name}\". "
+                    f"Assign 'Key Vault Reader' + 'Key Vault Secrets User' + "
+                    f"'Key Vault Crypto User' + 'Key Vault Certificate User' "
+                    f"RBAC roles to the scanning identity on this vault."
+                )
+                logger.warning(msg)
+                result.warnings.append(msg)
+                vaults_denied += 1
+            else:
+                msg = f"Error scanning vault {vault_name}: {e}"
+                logger.error(msg)
+                result.warnings.append(msg)
 
-    return items
+    if vaults_denied > 0:
+        logger.warning(
+            f"Subscription \"{subscription_name}\": {result.vaults_accessible}/{len(vaults)} vaults "
+            f"accessible, {vaults_denied} denied (missing data-plane RBAC). "
+            f"Collected {len(result.items)} items total."
+        )
+
+    return result
 
 
 async def _scan_secrets(
@@ -100,6 +140,7 @@ async def _scan_secrets(
             })
     except Exception as e:
         logger.error(f"Error scanning secrets in {vault_name}: {e}")
+        raise
     finally:
         await client.close()
     return items
@@ -146,6 +187,7 @@ async def _scan_keys(
             })
     except Exception as e:
         logger.error(f"Error scanning keys in {vault_name}: {e}")
+        raise
     finally:
         await client.close()
     return items
@@ -190,6 +232,7 @@ async def _scan_certificates(
             })
     except Exception as e:
         logger.error(f"Error scanning certificates in {vault_name}: {e}")
+        raise
     finally:
         await client.close()
     return items
