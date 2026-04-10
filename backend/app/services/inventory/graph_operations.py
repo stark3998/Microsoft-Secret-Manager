@@ -285,11 +285,21 @@ def _format_graph_error(e: Exception, endpoint: str) -> dict:
 
     if "403" in error_str:
         result["error"] = "Permission denied (403)"
-        result["detail"] = (
-            "This endpoint requires 'AuditLog.Read.All' permission and "
-            "the signed-in user must have a 'Reports Reader', 'Security Reader', "
-            "or 'Security Administrator' Entra ID role assigned."
-        )
+        # Check raw response for specific Graph error code
+        if raw_response and "MSGraphPermissionMissing" in raw_response:
+            result["detail"] = (
+                "The MSAL app registration is missing the 'AuditLog.Read.All' "
+                "delegated permission. Go to Azure Portal → App Registrations → "
+                "your MSAL client app → API Permissions → Add 'AuditLog.Read.All' "
+                "(Microsoft Graph, Delegated) → Grant admin consent."
+            )
+        else:
+            result["detail"] = (
+                "This endpoint requires 'AuditLog.Read.All' permission on the app "
+                "registration (with admin consent) and the signed-in user must have "
+                "a 'Reports Reader', 'Security Reader', 'Global Reader', "
+                "or 'Security Administrator' Entra ID role assigned."
+            )
 
     return result
 
