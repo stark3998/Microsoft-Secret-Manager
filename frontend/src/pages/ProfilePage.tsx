@@ -256,7 +256,7 @@ function TokenCard({ title, description, icon, token, label }: {
 // ProfilePage
 // ---------------------------------------------------------------------------
 
-const DEFAULT_ID_SCOPES = 'openid profile email';
+const DEFAULT_ID_SCOPES = 'openid profile email AuditLog.Read.All User.Read';
 
 function getDefaultAccessScopes(): string {
   const apiScopes = getApiTokenRequest();
