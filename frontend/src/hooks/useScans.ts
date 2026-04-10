@@ -12,7 +12,7 @@ export function useLatestScan() {
   return useQuery({
     queryKey: ['scans', 'latest'],
     queryFn: fetchLatestScan,
-    refetchInterval: 30000,
+    refetchInterval: 50000,
   });
 }
 

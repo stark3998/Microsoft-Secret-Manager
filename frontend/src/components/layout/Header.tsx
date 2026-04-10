@@ -73,19 +73,24 @@ export function Header() {
             onClick={() => navigate(ROUTES.PROFILE)}
             sx={{
               display: 'flex', alignItems: 'center', gap: 1, cursor: 'pointer',
-              borderRadius: 0, px: 1, py: 0.5,
+              borderRadius: 0, px: 1.5, py: 0.5,
               '&:hover': { backgroundColor: 'rgba(255,255,255,0.08)' },
             }}
           >
             <Box sx={{
-              width: 28, height: 28, borderRadius: '50%',
+              width: 32, height: 32, minWidth: 32, borderRadius: '50%',
               backgroundColor: '#0078D4',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
-              fontSize: '0.75rem', fontWeight: 600, color: '#FFFFFF',
+              fontSize: '0.8125rem', fontWeight: 600, color: '#FFFFFF',
+              lineHeight: 1,
             }}>
               {(user?.name || 'U').charAt(0).toUpperCase()}
             </Box>
-            <Typography sx={{ fontSize: '0.8125rem', color: '#F3F2F1', display: { xs: 'none', sm: 'block' } }}>
+            <Typography sx={{
+              fontSize: '0.8125rem', color: '#F3F2F1',
+              display: { xs: 'none', sm: 'block' },
+              whiteSpace: 'nowrap',
+            }}>
               {user?.name || user?.email || 'User'}
             </Typography>
           </Box>

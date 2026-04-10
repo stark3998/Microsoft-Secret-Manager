@@ -233,7 +233,7 @@ Granular per-action permissions that can be assigned as individual App Roles:
 
 5. **Parameterized Cosmos queries** — All user-supplied filter values are passed as parameters (`@param`), preventing NoSQL injection.
 
-6. **CORS lockdown** — Only `localhost:3000` and `localhost:5173` are allowed in development. In production, configure the CORS origin list to match your deployment domain.
+6. **CORS lockdown** — Only `localhost:5000` and `localhost:5173` are allowed in development. In production, configure the CORS origin list to match your deployment domain.
 
 7. **Event Grid validation** — The webhook endpoint validates Event Grid subscription handshakes before processing events, preventing unauthorized event injection.
 
@@ -387,7 +387,7 @@ VITE_API_BASE_URL=http://localhost:8000
 ### Entra ID App Registration Setup
 
 1. Register an application in Entra ID
-2. Set the redirect URI to `http://localhost:3000` (or your deployment URL)
+2. Set the redirect URI to `http://localhost:5000` (or your deployment URL)
 3. Create an API scope: `api://{client-id}/access_as_user`
 4. Define App Roles: `Admin`, `Viewer` (and optionally granular permissions like `SecretManager.TriggerScan`)
 5. Assign users to the appropriate roles
@@ -408,7 +408,7 @@ VITE_API_BASE_URL=http://localhost:8000
 
 This starts:
 - **Backend** at `http://localhost:8000` (uvicorn with --reload)
-- **Frontend** at `http://localhost:3000` (Vite dev server)
+- **Frontend** at `http://localhost:5000` (Vite dev server)
 - **API Docs** at `http://localhost:8000/docs` (Swagger UI)
 - **Health Check** at `http://localhost:8000/api/health`
 
@@ -430,7 +430,7 @@ STORAGE_MODE=local docker-compose up -d
 
 | Service | URL |
 |---|---|
-| Frontend | `http://localhost:3000` |
+| Frontend | `http://localhost:5000` |
 | Backend API | `http://localhost:8000` |
 | API Docs | `http://localhost:8000/docs` |
 | Cosmos Emulator | `https://localhost:8081` (with `--profile dev`) |

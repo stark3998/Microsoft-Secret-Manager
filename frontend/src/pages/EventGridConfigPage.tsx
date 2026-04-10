@@ -622,7 +622,7 @@ az eventgrid system-topic event-subscription create \\
 
       <Snackbar
         open={snackbar.open}
-        autoHideDuration={3000}
+        autoHideDuration={5000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
       >
         <Alert severity="success" onClose={() => setSnackbar({ ...snackbar, open: false })}>

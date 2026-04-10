@@ -40,8 +40,8 @@ if (-not (Test-Path "frontend\node_modules")) {
 # ---------------------------------------------------------------------------
 # Kill any processes already using our ports
 # ---------------------------------------------------------------------------
-Write-Info "Checking ports 8000, 3000..."
-foreach ($port in @(8000, 3000)) {
+Write-Info "Checking ports 8000, 5000..."
+foreach ($port in @(8000, 5000)) {
     $conns = Get-NetTCPConnection -LocalPort $port -State Listen -ErrorAction SilentlyContinue
     if ($conns) {
         foreach ($conn in $conns) {
@@ -88,7 +88,7 @@ Write-Ok "Backend job started (ID: $($BackendJob.Id))"
 # ---------------------------------------------------------------------------
 # Start frontend
 # ---------------------------------------------------------------------------
-Write-Info "Starting frontend (Vite on http://localhost:3000)..."
+Write-Info "Starting frontend (Vite on http://localhost:5000)..."
 
 $FrontendJob = Start-Job -ScriptBlock {
     param($Root)
@@ -106,7 +106,7 @@ Write-Host "========================================" -ForegroundColor Green
 Write-Host "  Both services are starting up"        -ForegroundColor Green
 Write-Host "========================================" -ForegroundColor Green
 Write-Host ""
-Write-Info "Frontend:  http://localhost:3000"
+Write-Info "Frontend:  http://localhost:5000"
 Write-Info "Backend:   http://localhost:8000"
 Write-Info "API docs:  http://localhost:8000/docs"
 Write-Info "Health:    http://localhost:8000/api/health"

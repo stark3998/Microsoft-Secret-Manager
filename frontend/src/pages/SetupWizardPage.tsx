@@ -120,7 +120,7 @@ export function SetupWizardPage({ onComplete }: SetupWizardPageProps) {
       await initializeApp(buildRequest());
       setInitStatus('success');
       setInitMessage('Application initialised successfully! Redirecting to sign-in...');
-      setTimeout(() => onComplete(), 3000);
+      setTimeout(() => onComplete(), 5000);
     } catch (e: unknown) {
       setInitStatus('error');
       setInitMessage(e instanceof Error ? e.message : 'Initialisation failed');

@@ -376,7 +376,7 @@ export function ProfilePage() {
 
       <Snackbar
         open={!!snackbar}
-        autoHideDuration={3000}
+        autoHideDuration={5000}
         onClose={() => setSnackbar('')}
         message={snackbar}
         anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}

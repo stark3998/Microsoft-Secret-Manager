@@ -85,7 +85,7 @@ ok "Backend started (PID: $BACKEND_PID)"
 # ---------------------------------------------------------------------------
 # Start frontend
 # ---------------------------------------------------------------------------
-info "Starting frontend (Vite on http://localhost:3000)..."
+info "Starting frontend (Vite on http://localhost:5000)..."
 (
     cd frontend
     npm run dev 2>&1 | \
@@ -102,7 +102,7 @@ echo -e "${GREEN}========================================${NC}"
 echo -e "${GREEN}  Both services are starting up${NC}"
 echo -e "${GREEN}========================================${NC}"
 echo ""
-info "Frontend:  http://localhost:3000"
+info "Frontend:  http://localhost:5000"
 info "Backend:   http://localhost:8000"
 info "API docs:  http://localhost:8000/docs"
 info "Health:    http://localhost:8000/api/health"
