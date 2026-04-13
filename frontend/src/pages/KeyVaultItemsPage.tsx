@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Button, Breadcrumbs, Link, Divider } from '@mui/material';
+import { Box, Typography, FormControl, InputLabel, Select, MenuItem, Button, Divider } from '@mui/material';
 import AddIcon from '@mui/icons-material/AddOutlined';
 import RefreshIcon from '@mui/icons-material/RefreshOutlined';
-import HomeIcon from '@mui/icons-material/HomeOutlined';
 import VpnKeyIcon from '@mui/icons-material/VpnKeyOutlined';
 import {
   useKeyVaultItems, useSubscriptions, useVaults,
@@ -15,8 +14,11 @@ import { ExportToolbar } from '../components/items/ExportToolbar';
 import { AcknowledgeActions } from '../components/items/AcknowledgeActions';
 import { CredentialDetailDialog, KEYVAULT_FIELDS } from '../components/items/CredentialDetailDialog';
 import { CreateCredentialDialog } from '../components/items/CreateCredentialDialog';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { PageHeader } from '../components/common/PageHeader';
+import { TableSkeleton } from '../components/common/TableSkeleton';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { SavedViewsBar } from '../components/common/SavedViewsBar';
+import { useSavedViews } from '../hooks/useSavedViews';
 import { formatDate, formatDaysUntilExpiration } from '../utils/formatters';
 import { ITEM_TYPE_LABELS } from '../utils/constants';
 
@@ -38,6 +40,7 @@ export function KeyVaultItemsPage() {
   const [pageSize, setPageSize] = useState(25);
   const [selectedItem, setSelectedItem] = useState<Record<string, unknown> | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { user } = useAuth();
   const isAdmin = user?.isAdmin ?? false;
@@ -57,6 +60,24 @@ export function KeyVaultItemsPage() {
   const createMut = useCreateKeyVaultItem();
   const updateMut = useUpdateKeyVaultItem();
   const deleteMut = useDeleteKeyVaultItem();
+
+  const { views, saveView, deleteView } = useSavedViews('keyvault');
+
+  const currentFilters: Record<string, string> = {};
+  if (search) currentFilters.search = search;
+  if (status) currentFilters.status = status;
+  if (subscription) currentFilters.subscription = subscription;
+  if (vault) currentFilters.vault = vault;
+  if (itemType) currentFilters.itemType = itemType;
+
+  const applyView = (filters: Record<string, string>) => {
+    setSearch(filters.search || '');
+    setStatus(filters.status || '');
+    setSubscription(filters.subscription || '');
+    setVault(filters.vault || '');
+    setItemType(filters.itemType || '');
+    setPage(1);
+  };
 
   const exportFilters: Record<string, string> = {};
   if (status) exportFilters.status = status;
@@ -136,22 +157,10 @@ export function KeyVaultItemsPage() {
 
   return (
     <Box>
-      {/* Breadcrumb */}
-      <Breadcrumbs sx={{ mb: 1.5, '& .MuiBreadcrumbs-separator': { color: '#A19F9D' } }}>
-        <Link underline="hover" color="#605E5C" href="/" sx={{ display: 'flex', alignItems: 'center', fontSize: '0.8125rem' }}>
-          <HomeIcon sx={{ fontSize: '0.875rem', mr: 0.5 }} />
-          Home
-        </Link>
-        <Typography sx={{ fontSize: '0.8125rem', color: '#323130', fontWeight: 600 }}>Key Vault Items</Typography>
-      </Breadcrumbs>
-
-      {/* Page header */}
-      <Box mb={2}>
-        <Typography variant="h4">Key Vault Items</Typography>
-        <Typography sx={{ color: '#605E5C', fontSize: '0.8125rem', mt: 0.5 }}>
-          Secrets, keys, and certificates across your Azure Key Vaults.
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Key Vault Items"
+        description="Secrets, keys, and certificates across your Azure Key Vaults."
+      />
 
       {/* Command bar */}
       <Box sx={{
@@ -170,6 +179,18 @@ export function KeyVaultItemsPage() {
         <Divider orientation="vertical" flexItem sx={{ mx: 0.5 }} />
         <ExportToolbar filters={exportFilters} />
       </Box>
+
+      {views.length > 0 || Object.values(currentFilters).some(v => v) ? (
+        <Box sx={{ mb: 1.5 }}>
+          <SavedViewsBar
+            views={views}
+            currentFilters={currentFilters}
+            onApplyView={applyView}
+            onSaveView={saveView}
+            onDeleteView={deleteView}
+          />
+        </Box>
+      ) : null}
 
       <ItemFilters
         search={search}
@@ -210,7 +231,7 @@ export function KeyVaultItemsPage() {
       />
 
       {isLoading ? (
-        <LoadingSpinner />
+        <TableSkeleton columns={8} rows={10} />
       ) : (
         <ItemsTable
           items={(data?.items || []) as unknown as Record<string, unknown>[]}
@@ -221,6 +242,12 @@ export function KeyVaultItemsPage() {
           onPageChange={setPage}
           onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
           onRowClick={setSelectedItem}
+          selectable
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
+          onBulkAcknowledge={() => { /* TODO: implement bulk acknowledge */ }}
+          onBulkSnooze={() => { /* TODO: implement bulk snooze */ }}
+          onBulkExport={() => { /* TODO: implement bulk export */ }}
         />
       )}
 

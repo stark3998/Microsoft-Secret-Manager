@@ -12,6 +12,7 @@ _database: Any = None
 items_container: Any = None
 settings_container: Any = None
 scan_history_container: Any = None
+audit_log_container: Any = None
 
 
 # ---------------------------------------------------------------------------
@@ -32,7 +33,7 @@ async def init_cosmos() -> None:
 
 async def _init_local() -> None:
     """Initialise local JSON-file containers."""
-    global items_container, settings_container, scan_history_container
+    global items_container, settings_container, scan_history_container, audit_log_container
 
     from app.db.local_store import init_local_containers
 
@@ -42,6 +43,7 @@ async def _init_local() -> None:
     items_container = containers["items"]
     settings_container = containers["settings"]
     scan_history_container = containers["scan_history"]
+    audit_log_container = containers["audit_log"]
 
     await _seed_default_settings()
     await _load_app_config()
@@ -50,7 +52,7 @@ async def _init_local() -> None:
 
 async def _init_cosmos_db() -> None:
     """Initialise Azure Cosmos DB client, database, and containers."""
-    global _client, _database, items_container, settings_container, scan_history_container
+    global _client, _database, items_container, settings_container, scan_history_container, audit_log_container
 
     if not settings.cosmos_endpoint:
         logger.warning("COSMOS_ENDPOINT not set — skipping Cosmos DB initialisation")
@@ -81,6 +83,7 @@ async def _init_cosmos_db() -> None:
         "items": {"partition_key": "/partitionKey", "default_ttl": None},
         "settings": {"partition_key": "/settingType", "default_ttl": None},
         "scan_history": {"partition_key": "/status", "default_ttl": 7776000},
+        "audit_log": {"partition_key": "/action", "default_ttl": None},
     }
 
     for name, cfg in container_defs.items():
@@ -99,6 +102,7 @@ async def _init_cosmos_db() -> None:
     items_container = _database.get_container_client("items")
     settings_container = _database.get_container_client("settings")
     scan_history_container = _database.get_container_client("scan_history")
+    audit_log_container = _database.get_container_client("audit_log")
 
     await _seed_default_settings()
     await _load_app_config()
@@ -126,17 +130,21 @@ async def _load_app_config() -> None:
                 "managedIdentityClientId": "managed_identity_client_id",
                 "msalClientId": "msal_client_id",
             }
+            updates = {}
             for cosmos_key, settings_key in field_map.items():
                 value = doc.get(cosmos_key)
                 if value:
-                    object.__setattr__(settings, settings_key, value)
+                    updates[settings_key] = value
 
-            if settings.azure_tenant_id and not settings.msal_authority:
-                object.__setattr__(
-                    settings,
-                    "msal_authority",
-                    f"{settings.authority_host}/{settings.azure_tenant_id}",
-                )
+            if updates:
+                # Use model_copy to create updated settings without mutating frozen model
+                import app.config as _config_module
+                new_settings = _config_module.settings.model_copy(update=updates)
+                if new_settings.azure_tenant_id and not new_settings.msal_authority:
+                    new_settings = new_settings.model_copy(update={
+                        "msal_authority": f"{new_settings.authority_host}/{new_settings.azure_tenant_id}",
+                    })
+                _config_module.settings = new_settings
             logger.info("Loaded application configuration from settings store")
             return
     except Exception as e:
@@ -262,3 +270,9 @@ def get_scan_history_container():
     if scan_history_container is None:
         raise RuntimeError("Storage not initialised")
     return scan_history_container
+
+
+def get_audit_log_container():
+    if audit_log_container is None:
+        raise RuntimeError("Storage not initialised")
+    return audit_log_container

@@ -6,19 +6,9 @@ from pydantic import BaseModel
 from app.auth.dependencies import require_viewer, require_permission
 from app.auth.rbac import Permission
 from app.db.cosmos_client import get_items_container
-from app.db.queries import query_items, count_items
+from app.db.queries import query_items
 from app.models.user import UserInfo
-from app.services.expiration import compute_expiration_status as _compute_expiration
-from app.utils.pagination import paginate
-
-
-def _expiry_info(expires_on_str: str | None) -> dict:
-    """Parse an ISO date string and return {status, days}."""
-    dt = None
-    if expires_on_str:
-        dt = datetime.fromisoformat(expires_on_str)
-    status, days = _compute_expiration(dt)
-    return {"status": status, "days": days}
+from app.routers._crud_helpers import expiry_info as _expiry_info, list_items_paginated, get_item_by_id, delete_item_by_id, update_item_fields
 
 router = APIRouter(prefix="/api/keyvault-items", tags=["keyvault-items"])
 
@@ -65,8 +55,7 @@ async def list_keyvault_items(
     user: UserInfo = Depends(require_viewer),
 ):
     """List Key Vault items with filtering, search, and pagination."""
-    container = get_items_container()
-    conditions = ["c.source = 'keyvault'"]
+    conditions = []
     params = []
 
     if subscription:
@@ -81,27 +70,15 @@ async def list_keyvault_items(
     if status:
         conditions.append("c.expirationStatus = @status")
         params.append({"name": "@status", "value": status})
-    if search:
-        conditions.append("CONTAINS(LOWER(c.itemName), LOWER(@search))")
-        params.append({"name": "@search", "value": search})
 
-    where_clause = " AND ".join(conditions)
-
-    # Get total count
-    count_query = f"SELECT VALUE COUNT(1) FROM c WHERE {where_clause}"
-    total = await count_items(container, count_query, params)
-
-    # Get paginated results
-    offset = (page - 1) * page_size
-    data_query = f"""
-        SELECT * FROM c
-        WHERE {where_clause}
-        ORDER BY c.expiresOn ASC
-        OFFSET {offset} LIMIT {page_size}
-    """
-    items = await query_items(container, data_query, params)
-
-    return paginate(items, page, page_size, total)
+    return await list_items_paginated(
+        source_filter="keyvault",
+        conditions_extra=conditions,
+        params=params,
+        search=search,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/subscriptions")
@@ -143,13 +120,7 @@ async def list_vaults(
 @router.get("/{item_id}")
 async def get_keyvault_item(item_id: str, user: UserInfo = Depends(require_viewer)):
     """Get a single Key Vault item by ID."""
-    container = get_items_container()
-    query = "SELECT * FROM c WHERE c.id = @id AND c.source = 'keyvault'"
-    params = [{"name": "@id", "value": item_id}]
-    results = await query_items(container, query, params)
-    if not results:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return results[0]
+    return await get_item_by_id(item_id, "keyvault")
 
 
 @router.post("")
@@ -199,16 +170,6 @@ async def update_keyvault_item(
     user: UserInfo = Depends(require_permission(Permission.MANAGE_CREDENTIALS)),
 ):
     """Update an existing Key Vault item."""
-    container = get_items_container()
-    query = "SELECT * FROM c WHERE c.id = @id AND c.source = 'keyvault'"
-    params = [{"name": "@id", "value": item_id}]
-    results = await query_items(container, query, params)
-    if not results:
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    doc = results[0]
-    updates = body.model_dump(exclude_none=True)
-
     field_map = {
         "item_name": "itemName",
         "item_type": "itemType",
@@ -223,19 +184,9 @@ async def update_keyvault_item(
         "not_before_date": "notBeforeDate",
         "tags": "tags",
     }
-    for py_key, cosmos_key in field_map.items():
-        if py_key in updates:
-            doc[cosmos_key] = updates[py_key]
-
-    doc["updatedOn"] = datetime.now(timezone.utc).isoformat()
-    doc["updatedBy"] = user.name or user.oid
-
-    expiry = _expiry_info(doc.get("expiresOn"))
-    doc["expirationStatus"] = expiry["status"]
-    doc["daysUntilExpiration"] = expiry["days"]
-
-    await container.upsert_item(body=doc)
-    return doc
+    return await update_item_fields(
+        item_id, "keyvault", body.model_dump(exclude_none=True), field_map, user.name or user.oid,
+    )
 
 
 @router.delete("/{item_id}")
@@ -244,12 +195,4 @@ async def delete_keyvault_item(
     user: UserInfo = Depends(require_permission(Permission.MANAGE_CREDENTIALS)),
 ):
     """Delete a Key Vault item."""
-    container = get_items_container()
-    query = "SELECT * FROM c WHERE c.id = @id AND c.source = 'keyvault'"
-    params = [{"name": "@id", "value": item_id}]
-    results = await query_items(container, query, params)
-    if not results:
-        raise HTTPException(status_code=404, detail="Item not found")
-    doc = results[0]
-    await container.delete_item(item=item_id, partition_key=doc.get("partitionKey", ""))
-    return {"status": "deleted", "id": item_id}
+    return await delete_item_by_id(item_id, "keyvault")

@@ -13,6 +13,7 @@ export function useUpdateThresholds() {
   return useMutation({
     mutationFn: updateThresholds,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
+    onError: (error: Error) => { console.error('Update thresholds failed:', error.message); },
   });
 }
 
@@ -21,6 +22,7 @@ export function useUpdateNotifications() {
   return useMutation({
     mutationFn: updateNotifications,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
+    onError: (error: Error) => { console.error('Update notifications failed:', error.message); },
   });
 }
 
@@ -29,6 +31,7 @@ export function useUpdateSchedule() {
   return useMutation({
     mutationFn: updateSchedule,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['settings'] }),
+    onError: (error: Error) => { console.error('Update schedule failed:', error.message); },
   });
 }
 
@@ -44,5 +47,6 @@ export function useUpdateAppConfig() {
   return useMutation({
     mutationFn: updateAppConfig,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['appConfig'] }),
+    onError: (error: Error) => { console.error('Update app config failed:', error.message); },
   });
 }

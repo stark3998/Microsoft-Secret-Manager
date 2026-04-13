@@ -1,24 +1,13 @@
 from datetime import datetime, timezone
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query
 from pydantic import BaseModel
 
 from app.auth.dependencies import require_viewer, require_permission
 from app.auth.rbac import Permission
 from app.db.cosmos_client import get_items_container
-from app.db.queries import query_items, count_items
 from app.models.user import UserInfo
-from app.services.expiration import compute_expiration_status as _compute_expiration
-from app.utils.pagination import paginate
-
-
-def _expiry_info(expires_on_str: str | None) -> dict:
-    dt = None
-    if expires_on_str:
-        dt = datetime.fromisoformat(expires_on_str)
-    status, days = _compute_expiration(dt)
-    return {"status": status, "days": days}
-
+from app.routers._crud_helpers import expiry_info as _expiry_info, list_items_paginated, get_item_by_id, delete_item_by_id, update_item_fields
 
 router = APIRouter(prefix="/api/app-registrations", tags=["app-registrations"])
 
@@ -56,46 +45,26 @@ async def list_app_registrations(
     user: UserInfo = Depends(require_viewer),
 ):
     """List App Registration credentials with filtering and pagination."""
-    container = get_items_container()
-    conditions = ["c.source = 'app_registration'"]
+    conditions = []
     params = []
-
     if status:
         conditions.append("c.expirationStatus = @status")
         params.append({"name": "@status", "value": status})
-    if search:
-        conditions.append(
-            "(CONTAINS(LOWER(c.appDisplayName), LOWER(@search)) OR CONTAINS(LOWER(c.credentialDisplayName), LOWER(@search)))"
-        )
-        params.append({"name": "@search", "value": search})
 
-    where_clause = " AND ".join(conditions)
-
-    count_query = f"SELECT VALUE COUNT(1) FROM c WHERE {where_clause}"
-    total = await count_items(container, count_query, params)
-
-    offset = (page - 1) * page_size
-    data_query = f"""
-        SELECT * FROM c
-        WHERE {where_clause}
-        ORDER BY c.expiresOn ASC
-        OFFSET {offset} LIMIT {page_size}
-    """
-    items = await query_items(container, data_query, params)
-
-    return paginate(items, page, page_size, total)
+    return await list_items_paginated(
+        source_filter="app_registration",
+        conditions_extra=conditions,
+        params=params,
+        search_field="c.appDisplayName",
+        search=search,
+        page=page,
+        page_size=page_size,
+    )
 
 
 @router.get("/{item_id}")
 async def get_app_registration(item_id: str, user: UserInfo = Depends(require_viewer)):
-    """Get a single App Registration credential by ID."""
-    container = get_items_container()
-    query = "SELECT * FROM c WHERE c.id = @id AND c.source = 'app_registration'"
-    params = [{"name": "@id", "value": item_id}]
-    results = await query_items(container, query, params)
-    if not results:
-        raise HTTPException(status_code=404, detail="Item not found")
-    return results[0]
+    return await get_item_by_id(item_id, "app_registration")
 
 
 @router.post("")
@@ -140,17 +109,6 @@ async def update_app_registration(
     body: AppRegistrationUpdate,
     user: UserInfo = Depends(require_permission(Permission.MANAGE_CREDENTIALS)),
 ):
-    """Update an existing App Registration credential."""
-    container = get_items_container()
-    query = "SELECT * FROM c WHERE c.id = @id AND c.source = 'app_registration'"
-    params = [{"name": "@id", "value": item_id}]
-    results = await query_items(container, query, params)
-    if not results:
-        raise HTTPException(status_code=404, detail="Item not found")
-
-    doc = results[0]
-    updates = body.model_dump(exclude_none=True)
-
     field_map = {
         "app_display_name": "appDisplayName",
         "item_type": "itemType",
@@ -162,19 +120,9 @@ async def update_app_registration(
         "thumbprint": "thumbprint",
         "subject": "subject",
     }
-    for py_key, cosmos_key in field_map.items():
-        if py_key in updates:
-            doc[cosmos_key] = updates[py_key]
-
-    doc["updatedOn"] = datetime.now(timezone.utc).isoformat()
-    doc["updatedBy"] = user.name or user.oid
-
-    expiry = _expiry_info(doc.get("expiresOn"))
-    doc["expirationStatus"] = expiry["status"]
-    doc["daysUntilExpiration"] = expiry["days"]
-
-    await container.upsert_item(body=doc)
-    return doc
+    return await update_item_fields(
+        item_id, "app_registration", body.model_dump(exclude_none=True), field_map, user.name or user.oid,
+    )
 
 
 @router.delete("/{item_id}")
@@ -182,13 +130,4 @@ async def delete_app_registration(
     item_id: str,
     user: UserInfo = Depends(require_permission(Permission.MANAGE_CREDENTIALS)),
 ):
-    """Delete an App Registration credential."""
-    container = get_items_container()
-    query = "SELECT * FROM c WHERE c.id = @id AND c.source = 'app_registration'"
-    params = [{"name": "@id", "value": item_id}]
-    results = await query_items(container, query, params)
-    if not results:
-        raise HTTPException(status_code=404, detail="Item not found")
-    doc = results[0]
-    await container.delete_item(item=item_id, partition_key=doc.get("partitionKey", "entra"))
-    return {"status": "deleted", "id": item_id}
+    return await delete_item_by_id(item_id, "app_registration", "entra")

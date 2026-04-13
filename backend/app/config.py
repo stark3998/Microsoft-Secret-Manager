@@ -88,6 +88,12 @@ class Settings(BaseSettings):
     applicationinsights_connection_string: str = ""
     otel_exporter_otlp_endpoint: str = ""
 
+    # CORS
+    cors_origins: str = "http://localhost:5000,http://localhost:5173"
+
+    # Rate Limiting
+    rate_limit_per_minute: int = 60
+
     # Export
     export_max_items: int = 10000
 
@@ -136,3 +142,9 @@ class Settings(BaseSettings):
 
 
 settings = Settings()
+
+
+def _replace_settings(updates: dict) -> None:
+    """Update the global settings singleton with new values."""
+    global settings
+    settings = settings.model_copy(update=updates)

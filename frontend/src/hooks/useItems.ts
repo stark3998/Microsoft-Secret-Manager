@@ -45,6 +45,7 @@ export function useCreateKeyVaultItem() {
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => createKeyVaultItem(body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['keyvault-items'] }); },
+    onError: (error: Error) => { console.error('Create key vault item failed:', error.message); },
   });
 }
 
@@ -53,6 +54,7 @@ export function useUpdateKeyVaultItem() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) => updateKeyVaultItem(id, body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['keyvault-items'] }); },
+    onError: (error: Error) => { console.error('Update key vault item failed:', error.message); },
   });
 }
 
@@ -61,6 +63,7 @@ export function useDeleteKeyVaultItem() {
   return useMutation({
     mutationFn: (id: string) => deleteKeyVaultItem(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['keyvault-items'] }); },
+    onError: (error: Error) => { console.error('Delete key vault item failed:', error.message); },
   });
 }
 
@@ -69,6 +72,7 @@ export function useCreateAppRegistration() {
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => createAppRegistration(body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['app-registrations'] }); },
+    onError: (error: Error) => { console.error('Create app registration failed:', error.message); },
   });
 }
 
@@ -77,6 +81,7 @@ export function useUpdateAppRegistration() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) => updateAppRegistration(id, body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['app-registrations'] }); },
+    onError: (error: Error) => { console.error('Update app registration failed:', error.message); },
   });
 }
 
@@ -85,6 +90,7 @@ export function useDeleteAppRegistration() {
   return useMutation({
     mutationFn: (id: string) => deleteAppRegistration(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['app-registrations'] }); },
+    onError: (error: Error) => { console.error('Delete app registration failed:', error.message); },
   });
 }
 
@@ -93,6 +99,7 @@ export function useCreateEnterpriseApp() {
   return useMutation({
     mutationFn: (body: Record<string, unknown>) => createEnterpriseApp(body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['enterprise-apps'] }); },
+    onError: (error: Error) => { console.error('Create enterprise app failed:', error.message); },
   });
 }
 
@@ -101,6 +108,7 @@ export function useUpdateEnterpriseApp() {
   return useMutation({
     mutationFn: ({ id, body }: { id: string; body: Record<string, unknown> }) => updateEnterpriseApp(id, body),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['enterprise-apps'] }); },
+    onError: (error: Error) => { console.error('Update enterprise app failed:', error.message); },
   });
 }
 
@@ -109,5 +117,6 @@ export function useDeleteEnterpriseApp() {
   return useMutation({
     mutationFn: (id: string) => deleteEnterpriseApp(id),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['enterprise-apps'] }); },
+    onError: (error: Error) => { console.error('Delete enterprise app failed:', error.message); },
   });
 }

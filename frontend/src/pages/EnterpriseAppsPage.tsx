@@ -1,8 +1,7 @@
 import { useState } from 'react';
-import { Box, Typography, Button, Breadcrumbs, Link } from '@mui/material';
+import { Box, Typography, Button } from '@mui/material';
 import AddIcon from '@mui/icons-material/AddOutlined';
 import RefreshIcon from '@mui/icons-material/RefreshOutlined';
-import HomeIcon from '@mui/icons-material/HomeOutlined';
 import BusinessIcon from '@mui/icons-material/BusinessOutlined';
 import {
   useEnterpriseApps,
@@ -13,8 +12,11 @@ import { ItemFilters } from '../components/items/ItemFilters';
 import { ItemsTable } from '../components/items/ItemsTable';
 import { CredentialDetailDialog, ENTERPRISE_APP_FIELDS } from '../components/items/CredentialDetailDialog';
 import { CreateCredentialDialog } from '../components/items/CreateCredentialDialog';
-import { LoadingSpinner } from '../components/common/LoadingSpinner';
+import { PageHeader } from '../components/common/PageHeader';
+import { TableSkeleton } from '../components/common/TableSkeleton';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { SavedViewsBar } from '../components/common/SavedViewsBar';
+import { useSavedViews } from '../hooks/useSavedViews';
 import { formatDate, formatDaysUntilExpiration } from '../utils/formatters';
 
 const FIELD_MAP: Record<string, string> = {
@@ -30,6 +32,7 @@ export function EnterpriseAppsPage() {
   const [pageSize, setPageSize] = useState(25);
   const [selectedItem, setSelectedItem] = useState<Record<string, unknown> | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   const { user } = useAuth();
   const isAdmin = user?.isAdmin ?? false;
@@ -44,6 +47,18 @@ export function EnterpriseAppsPage() {
   const createMut = useCreateEnterpriseApp();
   const updateMut = useUpdateEnterpriseApp();
   const deleteMut = useDeleteEnterpriseApp();
+
+  const { views, saveView, deleteView } = useSavedViews('enterpriseApps');
+
+  const currentFilters: Record<string, string> = {};
+  if (search) currentFilters.search = search;
+  if (status) currentFilters.status = status;
+
+  const applyView = (filters: Record<string, string>) => {
+    setSearch(filters.search || '');
+    setStatus(filters.status || '');
+    setPage(1);
+  };
 
   const columns = [
     {
@@ -107,20 +122,10 @@ export function EnterpriseAppsPage() {
 
   return (
     <Box>
-      <Breadcrumbs sx={{ mb: 1.5, '& .MuiBreadcrumbs-separator': { color: '#A19F9D' } }}>
-        <Link underline="hover" color="#605E5C" href="/" sx={{ display: 'flex', alignItems: 'center', fontSize: '0.8125rem' }}>
-          <HomeIcon sx={{ fontSize: '0.875rem', mr: 0.5 }} />
-          Home
-        </Link>
-        <Typography sx={{ fontSize: '0.8125rem', color: '#323130', fontWeight: 600 }}>Enterprise Apps</Typography>
-      </Breadcrumbs>
-
-      <Box mb={2}>
-        <Typography variant="h4">Enterprise Apps</Typography>
-        <Typography sx={{ color: '#605E5C', fontSize: '0.8125rem', mt: 0.5 }}>
-          SAML signing and encryption certificates for enterprise applications.
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Enterprise Apps"
+        description="SAML signing and encryption certificates for enterprise applications."
+      />
 
       {/* Command bar */}
       <Box sx={{
@@ -138,6 +143,18 @@ export function EnterpriseAppsPage() {
         </Button>
       </Box>
 
+      {views.length > 0 || Object.values(currentFilters).some(v => v) ? (
+        <Box sx={{ mb: 1.5 }}>
+          <SavedViewsBar
+            views={views}
+            currentFilters={currentFilters}
+            onApplyView={applyView}
+            onSaveView={saveView}
+            onDeleteView={deleteView}
+          />
+        </Box>
+      ) : null}
+
       <ItemFilters
         search={search}
         onSearchChange={(v) => { setSearch(v); setPage(1); }}
@@ -146,7 +163,7 @@ export function EnterpriseAppsPage() {
       />
 
       {isLoading ? (
-        <LoadingSpinner />
+        <TableSkeleton columns={6} rows={10} />
       ) : (
         <ItemsTable
           items={(data?.items || []) as unknown as Record<string, unknown>[]}
@@ -157,6 +174,12 @@ export function EnterpriseAppsPage() {
           onPageChange={setPage}
           onPageSizeChange={(size) => { setPageSize(size); setPage(1); }}
           onRowClick={setSelectedItem}
+          selectable
+          selectedIds={selectedIds}
+          onSelectionChange={setSelectedIds}
+          onBulkAcknowledge={() => { /* TODO: implement bulk acknowledge */ }}
+          onBulkSnooze={() => { /* TODO: implement bulk snooze */ }}
+          onBulkExport={() => { /* TODO: implement bulk export */ }}
         />
       )}
 

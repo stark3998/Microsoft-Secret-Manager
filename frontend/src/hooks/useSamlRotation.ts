@@ -40,6 +40,7 @@ export function useInitiateRotation() {
       queryClient.invalidateQueries({ queryKey: ['saml-rotations'] });
       queryClient.invalidateQueries({ queryKey: ['saml-rotation-eligible'] });
     },
+    onError: (error: Error) => { console.error('Initiate rotation failed:', error.message); },
   });
 }
 
@@ -50,6 +51,7 @@ export function useActivateRotation() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['saml-rotations'] });
     },
+    onError: (error: Error) => { console.error('Activate rotation failed:', error.message); },
   });
 }
 
@@ -61,6 +63,7 @@ export function useCancelRotation() {
       queryClient.invalidateQueries({ queryKey: ['saml-rotations'] });
       queryClient.invalidateQueries({ queryKey: ['saml-rotation-eligible'] });
     },
+    onError: (error: Error) => { console.error('Cancel rotation failed:', error.message); },
   });
 }
 
@@ -72,5 +75,6 @@ export function useRunRotationCycle() {
       queryClient.invalidateQueries({ queryKey: ['saml-rotations'] });
       queryClient.invalidateQueries({ queryKey: ['saml-rotation-eligible'] });
     },
+    onError: (error: Error) => { console.error('Run rotation cycle failed:', error.message); },
   });
 }

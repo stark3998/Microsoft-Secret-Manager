@@ -9,6 +9,7 @@ from app.auth.dependencies import require_permission
 from app.auth.rbac import Permission
 from app.models.user import UserInfo
 from app.services.acknowledgment import acknowledge_item, snooze_item, unacknowledge_item
+from app.services.audit import record_audit_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/items", tags=["acknowledgment"])
@@ -40,6 +41,7 @@ async def acknowledge(
             acknowledged_by=user.name or user.oid,
             note=request.note,
         )
+        await record_audit_event("item.acknowledge", user, "credential", request.item_id, request.item_id, {"note": request.note})
         return {"status": "acknowledged", "item": item}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -59,6 +61,7 @@ async def snooze(
             snooze_days=request.snooze_days,
             note=request.note,
         )
+        await record_audit_event("item.snooze", user, "credential", request.item_id, request.item_id, {"snooze_days": request.snooze_days, "note": request.note})
         return {"status": "snoozed", "item": item}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))
@@ -75,6 +78,7 @@ async def unacknowledge(
             item_id=request.item_id,
             partition_key=request.partition_key,
         )
+        await record_audit_event("item.unacknowledge", user, "credential", request.item_id, request.item_id)
         return {"status": "unacknowledged", "item": item}
     except ValueError as e:
         raise HTTPException(status_code=404, detail=str(e))

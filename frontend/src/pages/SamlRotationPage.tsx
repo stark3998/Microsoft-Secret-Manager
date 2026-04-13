@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import {
-  Box, Typography, Card, CardContent, Grid, Button, Chip, Alert, Snackbar,
+  Box, Typography, Card, CardContent, Grid, Button, Chip, Alert,
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper,
   IconButton, Tooltip, CircularProgress, Dialog, DialogTitle, DialogContent,
   DialogActions, Tabs, Tab,
@@ -11,6 +11,7 @@ import CancelIcon from '@mui/icons-material/Cancel';
 import RefreshIcon from '@mui/icons-material/Refresh';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import HistoryIcon from '@mui/icons-material/History';
+import { PageHeader } from '../components/common/PageHeader';
 import {
   useRotations,
   useEligibleApps,
@@ -19,6 +20,7 @@ import {
   useCancelRotation,
   useRunRotationCycle,
 } from '../hooks/useSamlRotation';
+import { useToast } from '../components/common/ToastProvider';
 import { ROTATION_STATE_COLORS, ROTATION_STATE_LABELS } from '../utils/constants';
 import type { RotationJob, EligibleApp } from '../types';
 
@@ -49,7 +51,7 @@ function formatDate(iso: string | null) {
 
 export function SamlRotationPage() {
   const [tab, setTab] = useState(0);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+  const toast = useToast();
   const [confirmDialog, setConfirmDialog] = useState<{
     open: boolean;
     type: 'activate' | 'cancel' | 'initiate';
@@ -90,20 +92,20 @@ export function SamlRotationPage() {
     try {
       if (type === 'activate' && id) {
         await activateMutation.mutateAsync(id);
-        setSnackbar({ open: true, message: 'Rotation activated successfully', severity: 'success' });
+        toast.success('Rotation activated successfully');
       } else if (type === 'cancel' && id) {
         await cancelMutation.mutateAsync(id);
-        setSnackbar({ open: true, message: 'Rotation cancelled', severity: 'success' });
+        toast.success('Rotation cancelled');
       } else if (type === 'initiate' && spId) {
         await initiateMutation.mutateAsync({
           service_principal_id: spId,
           app_display_name: appName,
         });
-        setSnackbar({ open: true, message: 'Rotation initiated', severity: 'success' });
+        toast.success('Rotation initiated');
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Operation failed';
-      setSnackbar({ open: true, message: msg, severity: 'error' });
+      toast.error(msg);
     }
   };
 
@@ -111,38 +113,36 @@ export function SamlRotationPage() {
     try {
       const result = await cycleMutation.mutateAsync();
       const summary = result.summary;
-      setSnackbar({
-        open: true,
-        message: `Cycle complete: ${summary.initiated} initiated, ${summary.activated} activated, ${summary.completed} completed`,
-        severity: summary.errors > 0 ? 'error' : 'success',
-      });
+      if (summary.errors > 0) {
+        toast.error(`Cycle complete: ${summary.initiated} initiated, ${summary.activated} activated, ${summary.completed} completed`);
+      } else {
+        toast.success(`Cycle complete: ${summary.initiated} initiated, ${summary.activated} activated, ${summary.completed} completed`);
+      }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Cycle failed';
-      setSnackbar({ open: true, message: msg, severity: 'error' });
+      toast.error(msg);
     }
   };
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3.5}>
-        <Box>
-          <Typography variant="h4">SAML Certificate Rotation</Typography>
-          <Typography sx={{ color: '#6B7280', fontSize: '0.8125rem', mt: 0.5 }}>
-            Manage automated SAML signing certificate lifecycle for enterprise applications.
-          </Typography>
-        </Box>
-        <Tooltip title="Run a full rotation cycle (evaluate + process all states)">
-          <Button
-            variant="contained"
-            startIcon={cycleMutation.isPending ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <AutorenewIcon />}
-            onClick={handleRunCycle}
-            disabled={cycleMutation.isPending}
-            size="small"
-          >
-            Run Rotation Cycle
-          </Button>
-        </Tooltip>
-      </Box>
+      <PageHeader
+        title="SAML Certificate Rotation"
+        description="Manage automated SAML signing certificate lifecycle for enterprise applications."
+        action={
+          <Tooltip title="Run a full rotation cycle (evaluate + process all states)">
+            <Button
+              variant="contained"
+              startIcon={cycleMutation.isPending ? <CircularProgress size={16} sx={{ color: '#fff' }} /> : <AutorenewIcon />}
+              onClick={handleRunCycle}
+              disabled={cycleMutation.isPending}
+              size="small"
+            >
+              Run Rotation Cycle
+            </Button>
+          </Tooltip>
+        }
+      />
 
       {/* Summary Cards */}
       <Grid container spacing={2} mb={3}>
@@ -456,16 +456,6 @@ export function SamlRotationPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={5000}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-      >
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

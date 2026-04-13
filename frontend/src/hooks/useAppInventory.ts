@@ -55,6 +55,7 @@ export function useDisableApp() {
       qc.invalidateQueries({ queryKey: ['app-inventory'] });
       qc.invalidateQueries({ queryKey: ['app-inventory-summary'] });
     },
+    onError: (error: Error) => { console.error('Disable app failed:', error.message); },
   });
 }
 
@@ -66,6 +67,7 @@ export function useEnableApp() {
       qc.invalidateQueries({ queryKey: ['app-inventory'] });
       qc.invalidateQueries({ queryKey: ['app-inventory-summary'] });
     },
+    onError: (error: Error) => { console.error('Enable app failed:', error.message); },
   });
 }
 
@@ -77,5 +79,6 @@ export function useBulkDisable() {
       qc.invalidateQueries({ queryKey: ['app-inventory'] });
       qc.invalidateQueries({ queryKey: ['app-inventory-summary'] });
     },
+    onError: (error: Error) => { console.error('Bulk disable apps failed:', error.message); },
   });
 }

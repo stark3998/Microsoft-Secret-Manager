@@ -33,3 +33,12 @@ export function formatDaysUntilExpiration(days: number | null): string {
   if (days === 0) return 'Expires today';
   return `${days} days`;
 }
+
+export function getExpirationColor(days: number | null): string {
+  if (days === null) return '#8A8886';
+  if (days < 0) return '#D13438';
+  if (days <= 7) return '#D83B01';
+  if (days <= 30) return '#F7630C';
+  if (days <= 90) return '#0078D4';
+  return '#107C10';
+}

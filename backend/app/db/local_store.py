@@ -383,6 +383,7 @@ CONTAINERS = {
     "items": "/partitionKey",
     "settings": "/settingType",
     "scan_history": "/status",
+    "audit_log": "/action",
 }
 
 

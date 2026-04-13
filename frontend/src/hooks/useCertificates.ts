@@ -33,6 +33,7 @@ export function useIssueCertificate() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['keyvault-items'] });
     },
+    onError: (error: Error) => { console.error('Issue certificate failed:', error.message); },
   });
 }
 
@@ -43,6 +44,7 @@ export function useRenewCertificate() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['keyvault-items'] });
     },
+    onError: (error: Error) => { console.error('Renew certificate failed:', error.message); },
   });
 }
 
@@ -53,11 +55,13 @@ export function useRevokeCertificate() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['keyvault-items'] });
     },
+    onError: (error: Error) => { console.error('Revoke certificate failed:', error.message); },
   });
 }
 
 export function useCheckRenewals() {
   return useMutation({
     mutationFn: checkRenewals,
+    onError: (error: Error) => { console.error('Check renewals failed:', error.message); },
   });
 }

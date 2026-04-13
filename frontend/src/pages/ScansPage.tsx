@@ -15,15 +15,13 @@ import {
   TableContainer,
   IconButton,
   Pagination,
-  Breadcrumbs,
-  Link,
 } from '@mui/material';
 import PlayArrowIcon from '@mui/icons-material/PlayArrowOutlined';
 import PersonIcon from '@mui/icons-material/PersonOutlined';
 import TerminalIcon from '@mui/icons-material/TerminalOutlined';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import HomeIcon from '@mui/icons-material/HomeOutlined';
+import { PageHeader } from '../components/common/PageHeader';
 import { useScanHistory, useTriggerScan, useActiveScan } from '../hooks/useScans';
 import { useScanStream } from '../hooks/useScanStream';
 import { useAuth, authDisabledMode } from '../auth/useAuth';
@@ -335,20 +333,10 @@ export function ScansPage() {
 
   return (
     <Box>
-      <Breadcrumbs sx={{ mb: 1.5, '& .MuiBreadcrumbs-separator': { color: '#A19F9D' } }}>
-        <Link underline="hover" color="#605E5C" href="/" sx={{ display: 'flex', alignItems: 'center', fontSize: '0.8125rem' }}>
-          <HomeIcon sx={{ fontSize: '0.875rem', mr: 0.5 }} />
-          Home
-        </Link>
-        <Typography sx={{ fontSize: '0.8125rem', color: '#323130', fontWeight: 600 }}>Scans</Typography>
-      </Breadcrumbs>
-
-      <Box mb={2}>
-        <Typography variant="h4">Scans</Typography>
-        <Typography sx={{ color: '#605E5C', fontSize: '0.8125rem', mt: 0.5 }}>
-          Trigger scans and monitor real-time progress.
-        </Typography>
-      </Box>
+      <PageHeader
+        title="Scans"
+        description="Trigger scans and monitor real-time progress."
+      />
 
       {/* Command bar */}
       {user?.isAdmin && (

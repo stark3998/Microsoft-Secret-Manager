@@ -9,6 +9,7 @@ from app.auth.dependencies import get_current_user, require_permission
 from app.auth.rbac import Permission
 from app.models.user import UserInfo
 from app.services.acme.orchestrator import CertificateOrchestrator
+from app.services.audit import record_audit_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/certificates", tags=["certificates"])
@@ -52,6 +53,7 @@ async def issue_certificate(
             preferred_chain=request.preferred_chain,
             tags=request.tags,
         )
+        await record_audit_event("certificate.issue", user, "certificate", request.certificate_name, request.certificate_name, {"domains": request.domains, "key_type": request.key_type})
         return {"status": "issued", "certificate": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -75,6 +77,7 @@ async def renew_certificate(
             dns_provider_key=request.dns_provider,
             force=request.force,
         )
+        await record_audit_event("certificate.renew", user, "certificate", request.certificate_name, request.certificate_name, {"force": request.force})
         if result is None:
             return {"status": "not_due", "message": "Certificate renewal not yet required"}
         return {"status": "renewed", "certificate": result}
@@ -97,6 +100,7 @@ async def revoke_certificate(
             cert_name=request.certificate_name,
             reason=request.reason,
         )
+        await record_audit_event("certificate.revoke", user, "certificate", request.certificate_name, request.certificate_name, {"reason": request.reason})
         return {"status": "revoked", "details": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -113,6 +117,7 @@ async def check_renewals(
     try:
         orchestrator = CertificateOrchestrator()
         results = await orchestrator.check_renewals()
+        await record_audit_event("certificate.check_renewals", user, "certificate", "", "bulk-renewal-check", {"renewed": len([r for r in results if "error" not in r]), "errors": len([r for r in results if "error" in r])})
         return {
             "status": "completed",
             "renewed": len([r for r in results if "error" not in r]),

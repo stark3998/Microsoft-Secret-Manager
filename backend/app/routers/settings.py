@@ -6,6 +6,7 @@ from app.auth.dependencies import require_admin
 from app.db.cosmos_client import get_settings_container
 from app.db.queries import query_items
 from app.models.user import UserInfo
+from app.services.audit import record_audit_event
 
 router = APIRouter(prefix="/api/settings", tags=["settings"])
 
@@ -47,7 +48,9 @@ async def get_all_settings(user: UserInfo = Depends(require_admin)):
 @router.put("/thresholds")
 async def update_thresholds(body: dict, user: UserInfo = Depends(require_admin)):
     """Update expiration threshold tiers."""
-    return await _update_setting("thresholds", {"tiers": body.get("tiers", [])}, user)
+    result = await _update_setting("thresholds", {"tiers": body.get("tiers", [])}, user)
+    await record_audit_event("settings.update_thresholds", user, "settings", "thresholds", "thresholds")
+    return result
 
 
 @router.put("/notifications")
@@ -59,7 +62,9 @@ async def update_notifications(body: dict, user: UserInfo = Depends(require_admi
         "notifyOnStatusChange", "dailyDigestEnabled", "dailyDigestTime",
     ]
     updates = {k: v for k, v in body.items() if k in allowed_keys}
-    return await _update_setting("notifications", updates, user)
+    result = await _update_setting("notifications", updates, user)
+    await record_audit_event("settings.update_notifications", user, "settings", "notifications", "notifications")
+    return result
 
 
 @router.get("/saml-rotation")
@@ -76,7 +81,9 @@ async def update_saml_rotation_settings(body: dict, user: UserInfo = Depends(req
         "autoActivate", "excludedServicePrincipals", "spMetadataRefreshCapable",
     ]
     updates = {k: v for k, v in body.items() if k in allowed_keys}
-    return await _update_setting("saml_rotation", updates, user)
+    result = await _update_setting("saml_rotation", updates, user)
+    await record_audit_event("settings.update_saml_rotation", user, "settings", "saml_rotation", "saml_rotation")
+    return result
 
 
 @router.put("/schedule")
@@ -85,6 +92,7 @@ async def update_schedule(body: dict, user: UserInfo = Depends(require_admin)):
     allowed_keys = ["cronExpression", "enabled", "subscriptionFilter"]
     updates = {k: v for k, v in body.items() if k in allowed_keys}
     result = await _update_setting("schedule", updates, user)
+    await record_audit_event("settings.update_schedule", user, "settings", "schedule", "schedule", {"cronExpression": updates.get("cronExpression")})
 
     # Reschedule the background job if cron changed
     if "cronExpression" in updates:
@@ -177,22 +185,26 @@ async def update_app_config(body: dict, user: UserInfo = Depends(require_admin))
     result = await _update_setting("app_config", updates, user)
 
     # Sync to in-memory settings singleton (except cosmos connection params)
+    settings_updates: dict[str, str] = {}
     for cosmos_key, settings_key in _FIELD_MAP.items():
         value = updates.get(cosmos_key)
         if value:
-            object.__setattr__(app_settings, settings_key, value)
+            settings_updates[settings_key] = value
 
     # Recompute msal_authority if tenant or environment changed
     if "azureTenantId" in updates or "azureEnvironment" in updates:
-        object.__setattr__(
-            app_settings,
-            "msal_authority",
-            f"{app_settings.authority_host}/{app_settings.azure_tenant_id}",
-        )
+        # Apply pending changes first so authority uses latest tenant
+        temp = app_settings.model_copy(update=settings_updates)
+        settings_updates["msal_authority"] = f"{temp.authority_host}/{temp.azure_tenant_id}"
+
+    if settings_updates:
+        from app.config import _replace_settings
+        _replace_settings(settings_updates)
 
     # Mask sensitive fields in response
     if result.get("azureClientSecret"):
         result["azureClientSecret"] = _SENSITIVE_MASK
 
+    await record_audit_event("settings.update_app_config", user, "settings", "app_config", "app_config", {"requires_restart": requires_restart})
     result["requiresRestart"] = requires_restart
     return result

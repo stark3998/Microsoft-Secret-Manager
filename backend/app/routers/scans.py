@@ -10,7 +10,7 @@ from pydantic import BaseModel
 
 from app.auth.dependencies import require_admin, require_viewer
 from app.db.cosmos_client import get_scan_history_container
-from app.db.queries import query_items
+from app.db.queries import count_items, query_items
 from app.models.user import UserInfo
 from app.services.scanner.event_bus import ScanEventBus
 
@@ -132,13 +132,17 @@ async def get_scan_history(
 ):
     """List past scan runs."""
     container = get_scan_history_container()
+
+    # Get total count
+    total = await count_items(container, "SELECT VALUE COUNT(1) FROM c")
+
     query = "SELECT * FROM c ORDER BY c.startedAt DESC OFFSET @offset LIMIT @limit"
     params = [
         {"name": "@offset", "value": (page - 1) * page_size},
         {"name": "@limit", "value": page_size},
     ]
     items = await query_items(container, query, params)
-    return {"items": items, "page": page, "pageSize": page_size}
+    return {"items": items, "page": page, "pageSize": page_size, "total": total}
 
 
 @router.get("/latest")

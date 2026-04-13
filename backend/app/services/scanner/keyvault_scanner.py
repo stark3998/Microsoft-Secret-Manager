@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from datetime import datetime, timezone
@@ -33,11 +34,12 @@ async def scan_subscription(
     """Scan all Key Vaults in a subscription for secrets, keys, and certificates."""
     result = ScanResult()
 
-    # List all Key Vaults in the subscription
-    kv_mgmt = KeyVaultManagementClient(credential, subscription_id)
-    vaults = []
-    for vault in kv_mgmt.vaults.list_by_subscription():
-        vaults.append(vault)
+    # List all Key Vaults in the subscription (sync SDK, run in thread)
+    def _list_vaults_sync(credential, subscription_id):
+        kv_mgmt = KeyVaultManagementClient(credential, subscription_id)
+        return list(kv_mgmt.vaults.list_by_subscription())
+
+    vaults = await asyncio.to_thread(_list_vaults_sync, credential, subscription_id)
 
     result.vaults_found = len(vaults)
     logger.info(f"Found {len(vaults)} vaults in subscription {subscription_name}")

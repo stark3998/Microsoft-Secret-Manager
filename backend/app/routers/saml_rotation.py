@@ -9,6 +9,7 @@ from app.auth.dependencies import get_current_user, require_permission
 from app.auth.rbac import Permission
 from app.models.user import UserInfo
 from app.services.saml_rotation.orchestrator import SamlRotationOrchestrator
+from app.services.audit import record_audit_event
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/api/saml-rotation", tags=["saml-rotation"])
@@ -73,6 +74,7 @@ async def initiate_rotation(
             app_display_name=request.app_display_name,
             triggered_by=user.email,
         )
+        await record_audit_event("saml_rotation.initiate", user, "service_principal", request.service_principal_id, request.app_display_name)
         return {"status": "staged", "rotation": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -93,6 +95,7 @@ async def activate_rotation(
             rotation_id=request.rotation_id,
             activated_by=user.email,
         )
+        await record_audit_event("saml_rotation.activate", user, "rotation", request.rotation_id, request.rotation_id)
         return {"status": "activated", "rotation": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -113,6 +116,7 @@ async def cancel_rotation(
             rotation_id=request.rotation_id,
             cancelled_by=user.email,
         )
+        await record_audit_event("saml_rotation.cancel", user, "rotation", request.rotation_id, request.rotation_id)
         return {"status": "cancelled", "rotation": result}
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -129,6 +133,7 @@ async def run_rotation_cycle(
     try:
         orchestrator = SamlRotationOrchestrator()
         result = await orchestrator.run_rotation_cycle()
+        await record_audit_event("saml_rotation.run_cycle", user, "rotation", "", "full-cycle", {"summary": result})
         return {"status": "completed", "summary": result}
     except Exception as e:
         logger.error(f"Rotation cycle failed: {e}")

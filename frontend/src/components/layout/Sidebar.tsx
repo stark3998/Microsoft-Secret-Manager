@@ -9,6 +9,8 @@ import {
   Divider,
   Typography,
   Toolbar,
+  useMediaQuery,
+  useTheme,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/DashboardOutlined';
 import RadarIcon from '@mui/icons-material/RadarOutlined';
@@ -22,6 +24,8 @@ import WebhookIcon from '@mui/icons-material/WebhookOutlined';
 import SettingsIcon from '@mui/icons-material/SettingsOutlined';
 import { useAuth } from '../../auth/useAuth';
 import { ROUTES } from '../../utils/constants';
+import { useThemeMode } from '../../theme/ThemeContext';
+import { sidebarColors } from '../../theme/palette';
 
 const DRAWER_WIDTH = 240;
 
@@ -41,8 +45,14 @@ const adminNav = [
   { label: 'Settings', path: ROUTES.SETTINGS, icon: <SettingsIcon /> },
 ];
 
-function NavItem({ label, icon, selected, onClick }: {
+interface SidebarProps {
+  mobileOpen?: boolean;
+  onToggleMobile?: () => void;
+}
+
+function NavItem({ label, icon, selected, onClick, colors }: {
   label: string; icon: React.ReactNode; selected: boolean; onClick: () => void;
+  colors: typeof sidebarColors['light'];
 }) {
   return (
     <ListItemButton
@@ -53,17 +63,17 @@ function NavItem({ label, icon, selected, onClick }: {
         mb: 0,
         py: 0.75,
         px: 2,
-        borderLeft: selected ? '3px solid #0078D4' : '3px solid transparent',
+        borderLeft: selected ? `3px solid ${colors.selectedAccent}` : '3px solid transparent',
         transition: 'none',
         '&.Mui-selected': {
-          backgroundColor: '#3B3A39',
-          '&:hover': { backgroundColor: '#3B3A39' },
+          backgroundColor: colors.selectedBg,
+          '&:hover': { backgroundColor: colors.selectedBg },
         },
-        '&:hover': { backgroundColor: '#323130' },
+        '&:hover': { backgroundColor: colors.hoverBg },
       }}
     >
       <ListItemIcon sx={{
-        color: selected ? '#0078D4' : '#A19F9D',
+        color: selected ? colors.selectedAccent : colors.accentText,
         minWidth: 32,
         '& .MuiSvgIcon-root': { fontSize: '1.125rem' },
       }}>
@@ -75,7 +85,7 @@ function NavItem({ label, icon, selected, onClick }: {
           '& .MuiTypography-root': {
             fontSize: '0.8125rem',
             fontWeight: selected ? 600 : 400,
-            color: selected ? '#FFFFFF' : '#D2D0CE',
+            color: selected ? colors.selectedText : colors.text,
           },
         }}
       />
@@ -83,22 +93,28 @@ function NavItem({ label, icon, selected, onClick }: {
   );
 }
 
-export function Sidebar() {
+export function Sidebar({ mobileOpen = false, onToggleMobile }: SidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { mode } = useThemeMode();
+  const colors = sidebarColors[mode];
+  const muiTheme = useTheme();
+  const isMobile = useMediaQuery(muiTheme.breakpoints.down('md'));
 
   return (
     <Drawer
-      variant="permanent"
+      variant={isMobile ? 'temporary' : 'permanent'}
+      open={isMobile ? mobileOpen : true}
+      onClose={onToggleMobile}
       sx={{
         width: DRAWER_WIDTH,
         flexShrink: 0,
         '& .MuiDrawer-paper': {
           width: DRAWER_WIDTH,
           boxSizing: 'border-box',
-          backgroundColor: '#252423',
-          borderRight: '1px solid #3B3A39',
+          backgroundColor: colors.bg,
+          borderRight: `1px solid ${colors.border}`,
           overflow: 'hidden',
         },
       }}
@@ -110,7 +126,7 @@ export function Sidebar() {
       <Box sx={{ pt: 0.5 }}>
         <Typography sx={{
           px: 2, py: 0.75, fontSize: '0.6875rem', fontWeight: 600,
-          color: '#A19F9D', letterSpacing: '0.04em', textTransform: 'uppercase',
+          color: colors.accentText, letterSpacing: '0.04em', textTransform: 'uppercase',
         }}>
           Monitor
         </Typography>
@@ -120,20 +136,24 @@ export function Sidebar() {
               key={item.path}
               {...item}
               selected={location.pathname === item.path}
-              onClick={() => navigate(item.path)}
+              onClick={() => {
+                navigate(item.path);
+                if (isMobile && onToggleMobile) onToggleMobile();
+              }}
+              colors={colors}
             />
           ))}
         </List>
       </Box>
 
-      <Divider sx={{ borderColor: '#3B3A39', my: 0.5 }} />
+      <Divider sx={{ borderColor: colors.border, my: 0.5 }} />
 
       {/* Admin nav */}
       {user?.isAdmin && (
         <Box>
           <Typography sx={{
             px: 2, py: 0.75, fontSize: '0.6875rem', fontWeight: 600,
-            color: '#A19F9D', letterSpacing: '0.04em', textTransform: 'uppercase',
+            color: colors.accentText, letterSpacing: '0.04em', textTransform: 'uppercase',
           }}>
             Manage
           </Typography>
@@ -143,7 +163,11 @@ export function Sidebar() {
                 key={item.path}
                 {...item}
                 selected={location.pathname === item.path}
-                onClick={() => navigate(item.path)}
+                onClick={() => {
+                  navigate(item.path);
+                  if (isMobile && onToggleMobile) onToggleMobile();
+                }}
+                colors={colors}
               />
             ))}
           </List>

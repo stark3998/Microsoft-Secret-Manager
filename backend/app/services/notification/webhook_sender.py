@@ -69,3 +69,24 @@ async def send_generic_webhook(
         response.raise_for_status()
 
     logger.info(f"Generic webhook notification sent to {webhook_url}")
+
+
+from app.services.notification.base import NotificationSender
+
+
+class WebhookNotificationSender(NotificationSender):
+    @property
+    def channel_name(self) -> str:
+        return "Webhook"
+
+    def is_enabled(self, settings: dict) -> bool:
+        return bool(settings.get("webhookEnabled") and settings.get("genericWebhookUrl"))
+
+    async def send(self, expired, critical, warning, settings):
+        await send_generic_webhook(
+            expired=expired,
+            critical=critical,
+            warning=warning,
+            webhook_url=settings["genericWebhookUrl"],
+            headers=settings.get("webhookHeaders", {}),
+        )

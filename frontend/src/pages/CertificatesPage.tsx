@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import {
   Box, Typography, Card, CardContent, Grid, TextField, Button,
-  Select, MenuItem, FormControl, InputLabel, Chip, Alert, Snackbar,
+  Select, MenuItem, FormControl, InputLabel, Chip, Alert,
   Dialog, DialogTitle, DialogContent, DialogActions, Table, TableBody,
   TableCell, TableContainer, TableHead, TableRow, Paper, Tooltip,
   CircularProgress, Divider, FormControlLabel, Checkbox,
@@ -10,6 +10,7 @@ import AddIcon from '@mui/icons-material/AddOutlined';
 import AutorenewIcon from '@mui/icons-material/AutorenewOutlined';
 import BlockIcon from '@mui/icons-material/BlockOutlined';
 import RefreshIcon from '@mui/icons-material/RefreshOutlined';
+import { PageHeader } from '../components/common/PageHeader';
 import {
   useDnsProviders,
   useDnsZones,
@@ -18,6 +19,7 @@ import {
   useRevokeCertificate,
   useCheckRenewals,
 } from '../hooks/useCertificates';
+import { useToast } from '../components/common/ToastProvider';
 
 function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
@@ -34,11 +36,11 @@ export function CertificatesPage() {
   const renewMutation = useRenewCertificate();
   const revokeMutation = useRevokeCertificate();
   const checkRenewalsMutation = useCheckRenewals();
+  const toast = useToast();
 
   const [issueOpen, setIssueOpen] = useState(false);
   const [renewOpen, setRenewOpen] = useState(false);
   const [revokeOpen, setRevokeOpen] = useState(false);
-  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
   const [issueDomains, setIssueDomains] = useState('');
   const [issueName, setIssueName] = useState('');
@@ -60,12 +62,12 @@ export function CertificatesPage() {
         domains, certificate_name: issueName, key_type: issueKeyType,
         dns_provider: issueDnsProvider || undefined,
       });
-      setSnackbar({ open: true, message: 'Certificate issued successfully', severity: 'success' });
+      toast.success('Certificate issued successfully');
       setIssueOpen(false);
       setIssueDomains('');
       setIssueName('');
     } catch (e: unknown) {
-      setSnackbar({ open: true, message: e instanceof Error ? e.message : 'Issuance failed', severity: 'error' });
+      toast.error(e instanceof Error ? e.message : 'Issuance failed');
     }
   };
 
@@ -73,10 +75,10 @@ export function CertificatesPage() {
     if (!renewName) return;
     try {
       const result = await renewMutation.mutateAsync({ certificate_name: renewName, key_type: 'ec256', force: renewForce });
-      setSnackbar({ open: true, message: result.status === 'not_due' ? 'Renewal not yet required' : 'Certificate renewed', severity: 'success' });
+      toast.success(result.status === 'not_due' ? 'Renewal not yet required' : 'Certificate renewed');
       setRenewOpen(false);
     } catch (e: unknown) {
-      setSnackbar({ open: true, message: e instanceof Error ? e.message : 'Renewal failed', severity: 'error' });
+      toast.error(e instanceof Error ? e.message : 'Renewal failed');
     }
   };
 
@@ -84,58 +86,56 @@ export function CertificatesPage() {
     if (!revokeName) return;
     try {
       await revokeMutation.mutateAsync({ certificate_name: revokeName, reason: revokeReason });
-      setSnackbar({ open: true, message: 'Certificate revoked', severity: 'success' });
+      toast.success('Certificate revoked');
       setRevokeOpen(false);
     } catch (e: unknown) {
-      setSnackbar({ open: true, message: e instanceof Error ? e.message : 'Revocation failed', severity: 'error' });
+      toast.error(e instanceof Error ? e.message : 'Revocation failed');
     }
   };
 
   const handleCheckRenewals = async () => {
     try {
       const result = await checkRenewalsMutation.mutateAsync();
-      setSnackbar({
-        open: true,
-        message: `Renewal check: ${result.renewed} renewed, ${result.errors} errors`,
-        severity: result.errors > 0 ? 'error' : 'success',
-      });
+      if (result.errors > 0) {
+        toast.error(`Renewal check: ${result.renewed} renewed, ${result.errors} errors`);
+      } else {
+        toast.success(`Renewal check: ${result.renewed} renewed, ${result.errors} errors`);
+      }
     } catch (e: unknown) {
-      setSnackbar({ open: true, message: e instanceof Error ? e.message : 'Check failed', severity: 'error' });
+      toast.error(e instanceof Error ? e.message : 'Check failed');
     }
   };
 
   return (
     <Box>
-      <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={3.5}>
-        <Box>
-          <Typography variant="h4">Certificate Management</Typography>
-          <Typography sx={{ color: '#6B7280', fontSize: '0.8125rem', mt: 0.5 }}>
-            Issue, renew, and revoke ACME certificates via Let's Encrypt.
-          </Typography>
-        </Box>
-        <Box display="flex" gap={1}>
-          <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => setIssueOpen(true)}>
-            Issue Certificate
-          </Button>
-          <Button variant="outlined" startIcon={<AutorenewIcon />} size="small" onClick={() => setRenewOpen(true)}>
-            Renew
-          </Button>
-          <Button variant="outlined" color="error" startIcon={<BlockIcon />} size="small" onClick={() => setRevokeOpen(true)}>
-            Revoke
-          </Button>
-          <Tooltip title="Check all managed certificates for renewal">
-            <Button
-              variant="outlined"
-              size="small"
-              startIcon={checkRenewalsMutation.isPending ? <CircularProgress size={14} sx={{ color: '#9CA3AF' }} /> : <RefreshIcon />}
-              onClick={handleCheckRenewals}
-              disabled={checkRenewalsMutation.isPending}
-            >
-              Check Renewals
+      <PageHeader
+        title="Certificate Management"
+        description="Issue, renew, and revoke ACME certificates via Let's Encrypt."
+        action={
+          <Box display="flex" gap={1}>
+            <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => setIssueOpen(true)}>
+              Issue Certificate
             </Button>
-          </Tooltip>
-        </Box>
-      </Box>
+            <Button variant="outlined" startIcon={<AutorenewIcon />} size="small" onClick={() => setRenewOpen(true)}>
+              Renew
+            </Button>
+            <Button variant="outlined" color="error" startIcon={<BlockIcon />} size="small" onClick={() => setRevokeOpen(true)}>
+              Revoke
+            </Button>
+            <Tooltip title="Check all managed certificates for renewal">
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={checkRenewalsMutation.isPending ? <CircularProgress size={14} sx={{ color: '#9CA3AF' }} /> : <RefreshIcon />}
+                onClick={handleCheckRenewals}
+                disabled={checkRenewalsMutation.isPending}
+              >
+                Check Renewals
+              </Button>
+            </Tooltip>
+          </Box>
+        }
+      />
 
       <Grid container spacing={2}>
         <Grid item xs={12} md={4}>
@@ -295,12 +295,6 @@ export function CertificatesPage() {
           </Button>
         </DialogActions>
       </Dialog>
-
-      <Snackbar open={snackbar.open} autoHideDuration={5000} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-        <Alert severity={snackbar.severity} onClose={() => setSnackbar({ ...snackbar, open: false })}>
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

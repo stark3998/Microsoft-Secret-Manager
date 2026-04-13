@@ -76,10 +76,12 @@ async def delete_items_by_type(
     Used to clear stale data before a full scan replaces it.
     Returns the number of items deleted.
     """
-    # Build query to find all items of these types
-    type_list = ", ".join(f"'{t}'" for t in item_types)
-    query = f"SELECT c.id, c.partitionKey FROM c WHERE c.itemType IN ({type_list})"
-    items = await query_items(container, query)
+    # Build parameterized IN clause
+    param_names = [f"@type{i}" for i in range(len(item_types))]
+    parameters = [{"name": name, "value": val} for name, val in zip(param_names, item_types)]
+    in_clause = ", ".join(param_names)
+    query = f"SELECT c.id, c.partitionKey FROM c WHERE c.itemType IN ({in_clause})"
+    items = await query_items(container, query, parameters)
 
     count = 0
     for item in items:

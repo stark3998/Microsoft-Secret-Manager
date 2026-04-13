@@ -97,3 +97,22 @@ async def send_teams_alert(
         response.raise_for_status()
 
     logger.info("Teams notification sent successfully")
+
+
+from app.services.notification.base import NotificationSender
+
+
+class TeamsNotificationSender(NotificationSender):
+    @property
+    def channel_name(self) -> str:
+        return "Teams"
+
+    def is_enabled(self, settings: dict) -> bool:
+        return bool(settings.get("teamsEnabled") and settings.get("teamsWebhookUrl"))
+
+    async def send(self, expired, critical, warning, settings):
+        await send_teams_alert(
+            expired=expired,
+            critical=critical,
+            webhook_url=settings["teamsWebhookUrl"],
+        )

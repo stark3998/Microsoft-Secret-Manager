@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { getAuthToken } from '../api/scans';
 import type { ScanLogEvent } from '../types';
 
@@ -18,6 +19,7 @@ export function useScanStream(scanId: string | null): UseScanStreamResult {
   const [isConnected, setIsConnected] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
   const abortRef = useRef<AbortController | null>(null);
+  const queryClient = useQueryClient();
 
   const clearLogs = useCallback(() => {
     setLogs([]);
@@ -79,6 +81,12 @@ export function useScanStream(scanId: string | null): UseScanStreamResult {
 
               if (event.type === 'complete' || event.type === 'failed') {
                 setIsComplete(true);
+                // Invalidate all data queries to fetch fresh scan results
+                queryClient.invalidateQueries({ queryKey: ['keyvault-items'] });
+                queryClient.invalidateQueries({ queryKey: ['app-registrations'] });
+                queryClient.invalidateQueries({ queryKey: ['enterprise-apps'] });
+                queryClient.invalidateQueries({ queryKey: ['dashboard-overview'] });
+                queryClient.invalidateQueries({ queryKey: ['scan-history'] });
               }
             } catch {
               // skip malformed events

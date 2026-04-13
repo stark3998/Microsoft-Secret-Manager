@@ -1,10 +1,26 @@
 import {
   Table, TableBody, TableCell, TableContainer, TableHead, TableRow,
-  Paper, TablePagination, Typography, Box,
+  Paper, TablePagination, Typography, Box, Tooltip, IconButton, Checkbox,
 } from '@mui/material';
+import OpenInNewIcon from '@mui/icons-material/OpenInNewOutlined';
+import SearchOffIcon from '@mui/icons-material/SearchOff';
 import { StatusBadge } from '../common/StatusBadge';
-import { formatDate, formatDaysUntilExpiration } from '../../utils/formatters';
+import { EmptyState } from '../common/EmptyState';
+import { BulkActionBar } from './BulkActionBar';
+import { formatDate, formatDaysUntilExpiration, getExpirationColor } from '../../utils/formatters';
 import { ITEM_TYPE_LABELS, SOURCE_LABELS } from '../../utils/constants';
+import { getResourceLink } from '../../utils/azurePortalLinks';
+
+const STATUS_ROW_COLORS: Record<string, string> = {
+  expired: 'rgba(209, 52, 56, 0.06)',
+  critical: 'rgba(216, 59, 1, 0.05)',
+  warning: 'rgba(247, 99, 12, 0.04)',
+  notice: 'rgba(0, 120, 212, 0.03)',
+};
+
+function getRowBackground(item: Record<string, unknown>): string | undefined {
+  return STATUS_ROW_COLORS[item.expirationStatus as string];
+}
 
 interface Column {
   key: string;
@@ -22,6 +38,12 @@ interface ItemsTableProps {
   onPageSizeChange: (size: number) => void;
   isLoading?: boolean;
   onRowClick?: (item: Record<string, unknown>) => void;
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onSelectionChange?: (ids: Set<string>) => void;
+  onBulkAcknowledge?: () => void;
+  onBulkSnooze?: () => void;
+  onBulkExport?: () => void;
 }
 
 const defaultColumns: Column[] = [
@@ -34,8 +56,55 @@ const defaultColumns: Column[] = [
   { key: 'source', label: 'Source', render: (item) => SOURCE_LABELS[item.source as string] || item.source as string },
   { key: 'location', label: 'Location', render: (item) => (item.vaultName || item.appDisplayName || '-') as string },
   { key: 'expiresOn', label: 'Expires', render: (item) => formatDate(item.expiresOn as string | null) },
-  { key: 'daysUntilExpiration', label: 'Time Left', render: (item) => formatDaysUntilExpiration(item.daysUntilExpiration as number | null) },
+  {
+    key: 'daysUntilExpiration',
+    label: 'Time Left',
+    render: (item) => {
+      const days = item.daysUntilExpiration as number | null;
+      const text = formatDaysUntilExpiration(days);
+      const color = getExpirationColor(days);
+      return (
+        <Typography
+          component="span"
+          sx={{
+            fontSize: '0.75rem',
+            fontWeight: 600,
+            color: color,
+            backgroundColor: `${color}14`,
+            px: 1,
+            py: 0.25,
+            borderRadius: '2px',
+            display: 'inline-block',
+          }}
+        >
+          {text}
+        </Typography>
+      );
+    },
+  },
   { key: 'expirationStatus', label: 'Status', render: (item) => <StatusBadge status={item.expirationStatus as string} /> },
+  {
+    key: 'actions',
+    label: '',
+    render: (item) => {
+      const link = getResourceLink(item);
+      return (
+        <Box sx={{ display: 'flex', gap: 0.5, opacity: 0, transition: 'opacity 0.15s', '.MuiTableRow-root:hover &': { opacity: 1 } }}>
+          {link && (
+            <Tooltip title="Open in Azure Portal">
+              <IconButton
+                size="small"
+                onClick={(e) => { e.stopPropagation(); window.open(link, '_blank', 'noopener'); }}
+                sx={{ p: 0.5 }}
+              >
+                <OpenInNewIcon sx={{ fontSize: '0.875rem' }} />
+              </IconButton>
+            </Tooltip>
+          )}
+        </Box>
+      );
+    },
+  },
 ];
 
 export function ItemsTable({
@@ -48,7 +117,36 @@ export function ItemsTable({
   onPageSizeChange,
   isLoading,
   onRowClick,
+  selectable = false,
+  selectedIds = new Set(),
+  onSelectionChange,
+  onBulkAcknowledge,
+  onBulkSnooze,
+  onBulkExport,
 }: ItemsTableProps) {
+  const allSelected = items.length > 0 && items.every((item) => selectedIds.has(item.id as string));
+  const someSelected = items.some((item) => selectedIds.has(item.id as string)) && !allSelected;
+
+  const handleSelectAll = () => {
+    if (!onSelectionChange) return;
+    if (allSelected) {
+      onSelectionChange(new Set());
+    } else {
+      onSelectionChange(new Set(items.map((item) => item.id as string)));
+    }
+  };
+
+  const handleSelectRow = (id: string) => {
+    if (!onSelectionChange) return;
+    const next = new Set(selectedIds);
+    if (next.has(id)) {
+      next.delete(id);
+    } else {
+      next.add(id);
+    }
+    onSelectionChange(next);
+  };
+
   return (
     <Paper sx={{ overflow: 'hidden', borderRadius: '2px' }}>
       {/* Resource count bar */}
@@ -64,6 +162,16 @@ export function ItemsTable({
         <Table size="small">
           <TableHead>
             <TableRow>
+              {selectable && (
+                <TableCell padding="checkbox">
+                  <Checkbox
+                    size="small"
+                    indeterminate={someSelected}
+                    checked={allSelected}
+                    onChange={handleSelectAll}
+                  />
+                </TableCell>
+              )}
               {columns.map((col) => (
                 <TableCell key={col.key}>{col.label}</TableCell>
               ))}
@@ -75,11 +183,26 @@ export function ItemsTable({
                 key={(item.id as string) || index}
                 hover
                 onClick={() => onRowClick?.(item)}
-                sx={onRowClick ? {
-                  cursor: 'pointer',
-                  '&:hover': { backgroundColor: '#F3F2F1' },
-                } : undefined}
+                selected={selectable && selectedIds.has(item.id as string)}
+                sx={{
+                  ...(onRowClick ? { cursor: 'pointer' } : {}),
+                  backgroundColor: getRowBackground(item),
+                  '&:hover': { backgroundColor: onRowClick ? '#F3F2F1' : undefined },
+                }}
               >
+                {selectable && (
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      size="small"
+                      checked={selectedIds.has(item.id as string)}
+                      onChange={(e) => {
+                        e.stopPropagation();
+                        handleSelectRow(item.id as string);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </TableCell>
+                )}
                 {columns.map((col) => (
                   <TableCell key={col.key}>
                     {col.render ? col.render(item) : (item[col.key] as string) ?? '-'}
@@ -89,8 +212,12 @@ export function ItemsTable({
             ))}
             {items.length === 0 && !isLoading && (
               <TableRow>
-                <TableCell colSpan={columns.length} align="center" sx={{ py: 8 }}>
-                  <Typography sx={{ color: '#A19F9D', fontSize: '0.8125rem' }}>No items found</Typography>
+                <TableCell colSpan={columns.length + (selectable ? 1 : 0)} sx={{ border: 0 }}>
+                  <EmptyState
+                    icon={<SearchOffIcon sx={{ fontSize: 32 }} />}
+                    title="No items found"
+                    description="No items match your current filters. Try adjusting your search or filter criteria."
+                  />
                 </TableCell>
               </TableRow>
             )}
@@ -115,6 +242,15 @@ export function ItemsTable({
           },
         }}
       />
+      {selectable && (
+        <BulkActionBar
+          selectedCount={selectedIds.size}
+          onAcknowledge={onBulkAcknowledge}
+          onSnooze={onBulkSnooze}
+          onExport={onBulkExport}
+          onClearSelection={() => onSelectionChange?.(new Set())}
+        />
+      )}
     </Paper>
   );
 }

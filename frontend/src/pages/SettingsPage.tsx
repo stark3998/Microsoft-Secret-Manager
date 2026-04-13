@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
   Box, Typography, Card, CardContent, Grid, TextField, Button,
-  Switch, FormControlLabel, IconButton, Alert, Snackbar,
+  Switch, FormControlLabel, IconButton,
   Tabs, Tab, Divider, Chip, Select, MenuItem, FormControl, InputLabel,
   Paper,
 } from '@mui/material';
+import { useToast } from '../components/common/ToastProvider';
 import AddIcon from '@mui/icons-material/AddOutlined';
 import DeleteIcon from '@mui/icons-material/DeleteOutlined';
 import SaveIcon from '@mui/icons-material/SaveOutlined';
@@ -113,6 +114,7 @@ export function SettingsPage() {
   const updateNotifications = useUpdateNotifications();
   const updateSchedule = useUpdateSchedule();
   const updateAppConfigMutation = useUpdateAppConfig();
+  const toast = useToast();
 
   const [tab, setTab] = useState(0);
   const [tiers, setTiers] = useState<ThresholdTier[]>([]);
@@ -138,7 +140,6 @@ export function SettingsPage() {
   const [newEmail, setNewEmail] = useState('');
   const [newHeaderKey, setNewHeaderKey] = useState('');
   const [newHeaderValue, setNewHeaderValue] = useState('');
-  const [snackbar, setSnackbar] = useState({ open: false, message: '' });
   const [config, setConfig] = useState({
     azureTenantId: '',
     azureClientId: '',
@@ -199,27 +200,26 @@ export function SettingsPage() {
 
   const handleSaveThresholds = async () => {
     await updateThresholds.mutateAsync(tiers);
-    setSnackbar({ open: true, message: 'Thresholds saved' });
+    toast.success('Thresholds saved');
   };
 
   const handleSaveNotifications = async () => {
     await updateNotifications.mutateAsync(notif);
-    setSnackbar({ open: true, message: 'Notification settings saved' });
+    toast.success('Notification settings saved');
   };
 
   const handleSaveSchedule = async () => {
     await updateSchedule.mutateAsync(schedule);
-    setSnackbar({ open: true, message: 'Schedule saved' });
+    toast.success('Schedule saved');
   };
 
   const handleSaveAppConfig = async () => {
     const result = await updateAppConfigMutation.mutateAsync(config);
-    setSnackbar({
-      open: true,
-      message: result.requiresRestart
+    toast.success(
+      result.requiresRestart
         ? 'Configuration saved. Changes to storage require an application restart to take effect.'
         : 'Configuration saved',
-    });
+    );
   };
 
   const addEmail = () => {
@@ -710,18 +710,6 @@ export function SettingsPage() {
           </Box>
         )}
       </TabPanel>
-
-      <Snackbar open={snackbar.open} autoHideDuration={4000} onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
-        <Alert
-          severity="success"
-          variant="filled"
-          onClose={() => setSnackbar({ ...snackbar, open: false })}
-          sx={{ borderRadius: '10px', fontSize: '0.8125rem' }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
     </Box>
   );
 }

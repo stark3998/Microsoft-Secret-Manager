@@ -90,3 +90,27 @@ async def send_expiration_email(
     )
 
     logger.info(f"Expiration email sent to {len(recipients)} recipients")
+
+
+from app.services.notification.base import NotificationSender
+
+
+class EmailNotificationSender(NotificationSender):
+    @property
+    def channel_name(self) -> str:
+        return "Email"
+
+    def is_enabled(self, settings: dict) -> bool:
+        return bool(
+            settings.get("emailEnabled")
+            and settings.get("emailRecipients")
+            and settings.get("emailFrom")
+        )
+
+    async def send(self, expired, critical, warning, settings):
+        await send_expiration_email(
+            expired=expired,
+            critical=critical,
+            recipients=settings["emailRecipients"],
+            from_address=settings["emailFrom"],
+        )

@@ -87,3 +87,22 @@ async def send_slack_alert(
         response.raise_for_status()
 
     logger.info("Slack notification sent successfully")
+
+
+from app.services.notification.base import NotificationSender
+
+
+class SlackNotificationSender(NotificationSender):
+    @property
+    def channel_name(self) -> str:
+        return "Slack"
+
+    def is_enabled(self, settings: dict) -> bool:
+        return bool(settings.get("slackEnabled") and settings.get("slackWebhookUrl"))
+
+    async def send(self, expired, critical, warning, settings):
+        await send_slack_alert(
+            expired=expired,
+            critical=critical,
+            webhook_url=settings["slackWebhookUrl"],
+        )
