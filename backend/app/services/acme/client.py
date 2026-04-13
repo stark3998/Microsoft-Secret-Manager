@@ -90,7 +90,7 @@ class AcmeClient:
                 )
                 logger.info(f"ACME account found: {self._registration.uri}")
             except Exception as e:
-                logger.error(f"Failed to register/find ACME account: {e}")
+                logger.exception(f"Failed to register/find ACME account: {e}")
                 raise
 
     async def request_certificate(

@@ -33,7 +33,7 @@ _log_handler = logging.StreamHandler(sys.stdout)
 _log_handler.setFormatter(_log_formatter)
 
 _app_logger = logging.getLogger("app")
-_app_logger.setLevel(logging.INFO)
+_app_logger.setLevel(logging.DEBUG)
 _app_logger.addHandler(_log_handler)
 _app_logger.propagate = False  # Don't duplicate into uvicorn's root handler
 

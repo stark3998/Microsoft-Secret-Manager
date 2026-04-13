@@ -187,6 +187,8 @@ export function AppRegistrationsPage() {
           onBulkAcknowledge={() => { /* TODO: implement bulk acknowledge */ }}
           onBulkSnooze={() => { /* TODO: implement bulk snooze */ }}
           onBulkExport={() => { /* TODO: implement bulk export */ }}
+          groupBy="appId"
+          groupLabelField="appDisplayName"
         />
       )}
 

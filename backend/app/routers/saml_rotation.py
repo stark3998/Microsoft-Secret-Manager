@@ -79,7 +79,7 @@ async def initiate_rotation(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Rotation initiation failed: {e}")
+        logger.exception(f"Rotation initiation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Initiation failed: {e}")
 
 
@@ -100,7 +100,7 @@ async def activate_rotation(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Rotation activation failed: {e}")
+        logger.exception(f"Rotation activation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Activation failed: {e}")
 
 
@@ -121,7 +121,7 @@ async def cancel_rotation(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Rotation cancellation failed: {e}")
+        logger.exception(f"Rotation cancellation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Cancellation failed: {e}")
 
 
@@ -136,5 +136,5 @@ async def run_rotation_cycle(
         await record_audit_event("saml_rotation.run_cycle", user, "rotation", "", "full-cycle", {"summary": result})
         return {"status": "completed", "summary": result}
     except Exception as e:
-        logger.error(f"Rotation cycle failed: {e}")
+        logger.exception(f"Rotation cycle failed: {e}")
         raise HTTPException(status_code=500, detail=f"Rotation cycle failed: {e}")

@@ -58,7 +58,7 @@ async def issue_certificate(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Certificate issuance failed: {e}")
+        logger.exception(f"Certificate issuance failed: {e}")
         raise HTTPException(status_code=500, detail=f"Issuance failed: {e}")
 
 
@@ -84,7 +84,7 @@ async def renew_certificate(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Certificate renewal failed: {e}")
+        logger.exception(f"Certificate renewal failed: {e}")
         raise HTTPException(status_code=500, detail=f"Renewal failed: {e}")
 
 
@@ -105,7 +105,7 @@ async def revoke_certificate(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Certificate revocation failed: {e}")
+        logger.exception(f"Certificate revocation failed: {e}")
         raise HTTPException(status_code=500, detail=f"Revocation failed: {e}")
 
 
@@ -125,5 +125,5 @@ async def check_renewals(
             "details": results,
         }
     except Exception as e:
-        logger.error(f"Renewal check failed: {e}")
+        logger.exception(f"Renewal check failed: {e}")
         raise HTTPException(status_code=500, detail=f"Renewal check failed: {e}")

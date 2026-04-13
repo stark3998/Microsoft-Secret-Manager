@@ -50,28 +50,28 @@ class SamlRotationOrchestrator:
             initiated = await self.evaluate_and_initiate_rotations()
             summary["initiated"] = len(initiated)
         except Exception as e:
-            logger.error(f"Error during rotation evaluation: {e}")
+            logger.exception(f"Error during rotation evaluation: {e}")
             summary["errors"] += 1
 
         try:
             notified = await self.process_staged_rotations()
             summary["notified"] = len(notified)
         except Exception as e:
-            logger.error(f"Error processing staged rotations: {e}")
+            logger.exception(f"Error processing staged rotations: {e}")
             summary["errors"] += 1
 
         try:
             activated = await self.process_notified_rotations()
             summary["activated"] = len(activated)
         except Exception as e:
-            logger.error(f"Error processing notified rotations: {e}")
+            logger.exception(f"Error processing notified rotations: {e}")
             summary["errors"] += 1
 
         try:
             completed = await self.process_activated_rotations()
             summary["completed"] = len(completed)
         except Exception as e:
-            logger.error(f"Error processing activated rotations: {e}")
+            logger.exception(f"Error processing activated rotations: {e}")
             summary["errors"] += 1
 
         logger.info(f"SAML rotation cycle complete: {summary}")
@@ -129,7 +129,7 @@ class SamlRotationOrchestrator:
                 )
                 results.append(result)
             except Exception as e:
-                logger.error(f"Failed to initiate rotation for SP {sp_id}: {e}")
+                logger.exception(f"Failed to initiate rotation for SP {sp_id}: {e}")
 
         return results
 
@@ -263,7 +263,7 @@ class SamlRotationOrchestrator:
                     f"Sent rotation notification for '{job.get('appDisplayName')}'"
                 )
             except Exception as e:
-                logger.error(
+                logger.exception(
                     f"Failed to notify for rotation {job['id']}: {e}"
                 )
                 await self._mark_failed(job, str(e))
@@ -322,7 +322,7 @@ class SamlRotationOrchestrator:
                     f"Auto-activated rotation for '{job.get('appDisplayName')}'"
                 )
             except Exception as e:
-                logger.error(
+                logger.exception(
                     f"Failed to activate rotation {job['id']}: {e}"
                 )
                 await self._mark_failed(job, str(e))
@@ -378,7 +378,7 @@ class SamlRotationOrchestrator:
                     f"— old cert removed"
                 )
             except Exception as e:
-                logger.error(
+                logger.exception(
                     f"Failed cleanup for rotation {job['id']}: {e}"
                 )
                 await self._mark_failed(job, str(e))

@@ -44,7 +44,7 @@ async def list_all_zones(
                     "provider_name": provider.name,
                 })
         except Exception as e:
-            logger.error(f"Failed to list zones from {provider.name}: {e}")
+            logger.exception(f"Failed to list zones from {provider.name}: {e}")
             result.append({
                 "zone": None,
                 "provider": key,
@@ -71,5 +71,5 @@ async def list_zones_for_provider(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        logger.error(f"Failed to list zones from {provider_key}: {e}")
+        logger.exception(f"Failed to list zones from {provider_key}: {e}")
         raise HTTPException(status_code=500, detail=str(e))

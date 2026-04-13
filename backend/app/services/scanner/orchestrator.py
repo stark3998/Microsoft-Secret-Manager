@@ -143,7 +143,7 @@ async def run_full_scan(
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 error_msg = f"Error scanning subscription {subscriptions[i]['displayName']}: {result}"
-                logger.error(error_msg)
+                logger.exception(error_msg)
                 scan_doc["errors"].append(error_msg)
                 await bus.emit("error", error_msg, phase="keyvault")
             else:
@@ -189,6 +189,7 @@ async def run_full_scan(
         )
 
         # 3. Scan App Registrations via Graph API
+        app_reg_items: list[dict] = []
         await bus.emit("phase_start", "Scanning App Registrations via Microsoft Graph...", phase="app_registrations")
         try:
             app_reg_items, app_count = await scan_app_registrations(credential, scan_id, tiers)
@@ -205,15 +206,35 @@ async def run_full_scan(
             )
         except Exception as e:
             error_msg = f"Error scanning app registrations: {e}"
-            logger.error(error_msg)
+            logger.exception(error_msg)
             scan_doc["errors"].append(error_msg)
             await bus.emit("error", error_msg, phase="app_registrations")
 
         # 4. Scan Enterprise Apps via Graph API
+        ent_app_items: list[dict] = []
         await bus.emit("phase_start", "Scanning Enterprise Apps via Microsoft Graph...", phase="enterprise_apps")
         try:
             ent_app_items, ent_count, _sp_metadata = await scan_enterprise_apps(credential, scan_id, tiers)
             scan_doc["enterpriseAppsScanned"] = ent_count
+
+            # Deduplicate: remove enterprise app credentials already found in
+            # app registrations (same appId + credentialId = same underlying credential)
+            if app_reg_items and ent_app_items:
+                seen_creds = {
+                    (item.get("appId"), item.get("credentialId"))
+                    for item in app_reg_items
+                    if item.get("credentialId")
+                }
+                before = len(ent_app_items)
+                ent_app_items = [
+                    item for item in ent_app_items
+                    if (item.get("appId"), item.get("credentialId")) not in seen_creds
+                       or not item.get("credentialId")
+                ]
+                deduped = before - len(ent_app_items)
+                if deduped:
+                    logger.info(f"Deduplicated {deduped} enterprise app credentials already in app registrations")
+
             if ent_app_items:
                 await upsert_items_batch(items_container, ent_app_items)
             scan_doc["itemsFound"] += len(ent_app_items)
@@ -226,7 +247,7 @@ async def run_full_scan(
             )
         except Exception as e:
             error_msg = f"Error scanning enterprise apps: {e}"
-            logger.error(error_msg)
+            logger.exception(error_msg)
             scan_doc["errors"].append(error_msg)
             await bus.emit("error", error_msg, phase="enterprise_apps")
 
@@ -253,7 +274,7 @@ async def run_full_scan(
                 await bus.emit("error", error_msg, phase="app_inventory")
 
         # 6. Count newly expired items
-        all_items = all_kv_items + (app_reg_items if 'app_reg_items' in dir() else []) + (ent_app_items if 'ent_app_items' in dir() else [])
+        all_items = all_kv_items + app_reg_items + ent_app_items
         expired = [i for i in all_items if i.get("expirationStatus") == "expired"]
         scan_doc["newExpiredFound"] = len(expired)
 
@@ -267,7 +288,7 @@ async def run_full_scan(
                 await evaluate_and_notify(all_items, notification_settings[0])
             await bus.emit("phase_complete", "Notifications processed", phase="notifications")
         except Exception as e:
-            logger.error(f"Error sending notifications: {e}")
+            logger.exception(f"Error sending notifications: {e}")
             await bus.emit("error", f"Error sending notifications: {e}", phase="notifications")
 
         scan_doc["status"] = "completed"
@@ -282,7 +303,7 @@ async def run_full_scan(
         )
 
     except Exception as e:
-        logger.error(f"Full scan failed: {e}")
+        logger.exception(f"Full scan failed: {e}")
         scan_doc["status"] = "failed"
         scan_doc["errors"].append(str(e))
         await bus.emit("failed", f"Scan failed: {e}", phase="done")

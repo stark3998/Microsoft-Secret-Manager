@@ -93,7 +93,7 @@ async def scan_subscription(
                 vaults_denied += 1
             else:
                 msg = f"Error scanning vault {vault_name}: {e}"
-                logger.error(msg)
+                logger.exception(msg)
                 result.warnings.append(msg)
 
     if vaults_denied > 0:
@@ -141,7 +141,7 @@ async def _scan_secrets(
                 "scanRunId": scan_run_id,
             })
     except Exception as e:
-        logger.error(f"Error scanning secrets in {vault_name}: {e}")
+        logger.exception(f"Error scanning secrets in {vault_name}: {e}")
         raise
     finally:
         await client.close()
@@ -188,7 +188,7 @@ async def _scan_keys(
                 "scanRunId": scan_run_id,
             })
     except Exception as e:
-        logger.error(f"Error scanning keys in {vault_name}: {e}")
+        logger.exception(f"Error scanning keys in {vault_name}: {e}")
         raise
     finally:
         await client.close()
@@ -233,7 +233,7 @@ async def _scan_certificates(
                 "scanRunId": scan_run_id,
             })
     except Exception as e:
-        logger.error(f"Error scanning certificates in {vault_name}: {e}")
+        logger.exception(f"Error scanning certificates in {vault_name}: {e}")
         raise
     finally:
         await client.close()

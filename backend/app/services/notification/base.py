@@ -45,5 +45,5 @@ class NotificationSender(ABC):
             logger.info(f"{self.channel_name} notification sent successfully")
             return True
         except Exception as e:
-            logger.error(f"Failed to send {self.channel_name} notification: {e}")
+            logger.exception(f"Failed to send {self.channel_name} notification: {e}")
             return False

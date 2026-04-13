@@ -101,7 +101,7 @@ async def start_scheduler() -> None:
         _scheduler.start()
         logger.info("All schedulers started")
     except Exception as e:
-        logger.error(f"Failed to start scheduler: {e}")
+        logger.exception(f"Failed to start scheduler: {e}")
 
 
 def stop_scheduler() -> None:
@@ -121,4 +121,4 @@ def reschedule_scan(cron_expression: str) -> None:
             _scheduler.reschedule_job("full_scan", trigger=trigger)
             logger.info(f"Rescheduled scan to: {cron_expression}")
         except Exception as e:
-            logger.error(f"Failed to reschedule scan: {e}")
+            logger.exception(f"Failed to reschedule scan: {e}")

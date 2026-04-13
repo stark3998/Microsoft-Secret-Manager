@@ -214,7 +214,7 @@ async def initialize_app(body: InitializeRequest):
     try:
         await init_cosmos()
     except Exception as e:
-        logger.error(f"Storage init failed during setup: {e}")
+        logger.exception(f"Storage init failed during setup: {e}")
         raise HTTPException(500, f"Failed to initialise storage: {e}")
 
     # 3) Persist app_config in the settings store

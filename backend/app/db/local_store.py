@@ -88,6 +88,13 @@ def _match_condition(doc: dict, cond: str, params: dict) -> bool:
             return val is not None
         return val is None
 
+    # c.field IN ('val1', 'val2', ...)
+    m = re.match(r"(c\.[\w.]+)\s+IN\s*\(([^)]+)\)", cond, re.IGNORECASE)
+    if m:
+        val = _get_field(doc, m.group(1))
+        in_values = [v.strip().strip("'\"") for v in m.group(2).split(",")]
+        return val in in_values
+
     # 1=1 (always true)
     if cond.strip() == "1=1":
         return True
@@ -244,6 +251,13 @@ class LocalContainerProxy:
     # -- persistence ---------------------------------------------------------
 
     def _load(self) -> None:
+        # Clean up stale .tmp file from previous crash/error
+        tmp = self._file + ".tmp"
+        if os.path.exists(tmp):
+            try:
+                os.remove(tmp)
+            except OSError:
+                pass
         if os.path.exists(self._file):
             with open(self._file, "r", encoding="utf-8") as fh:
                 self._data = json.load(fh)
@@ -251,18 +265,22 @@ class LocalContainerProxy:
             self._data = []
 
     def _write_to_disk(self) -> None:
-        """Write the in-memory data to disk (synchronous, call under lock)."""
+        """Write the in-memory data to disk (synchronous, call under lock).
+
+        Writes directly to the target file instead of atomic rename to avoid
+        Windows ``[WinError 5]`` permission errors caused by antivirus or
+        other processes briefly locking the file during rename.
+        """
         os.makedirs(self._data_dir, exist_ok=True)
-        tmp = self._file + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump(self._data, fh, indent=2, default=str)
+        payload = json.dumps(self._data, indent=2, default=str)
         for attempt in range(5):
             try:
-                os.replace(tmp, self._file)
+                with open(self._file, "w", encoding="utf-8") as fh:
+                    fh.write(payload)
                 return
             except PermissionError:
                 if sys.platform == "win32" and attempt < 4:
-                    time.sleep(0.05 * (attempt + 1))
+                    time.sleep(0.1 * (attempt + 1))
                 else:
                     raise
 
@@ -287,7 +305,7 @@ class LocalContainerProxy:
         """Wait briefly for more mutations, then flush once."""
         while self._dirty:
             self._dirty = False
-            await asyncio.sleep(0.1)
+            await asyncio.sleep(0.5)
         # Final flush — _dirty may have been set again during sleep
         async with self._lock:
             self._write_to_disk()

@@ -85,7 +85,7 @@ async def notify_cert_staged(
                     from_address=email_from,
                 )
             except Exception as e:
-                logger.error(f"Failed to send rotation email: {e}")
+                logger.exception(f"Failed to send rotation email: {e}")
 
     if notification_settings.get("teamsEnabled"):
         webhook_url = notification_settings.get("teamsWebhookUrl", "")
@@ -97,7 +97,7 @@ async def notify_cert_staged(
                     webhook_url=webhook_url,
                 )
             except Exception as e:
-                logger.error(f"Failed to send rotation Teams alert: {e}")
+                logger.exception(f"Failed to send rotation Teams alert: {e}")
 
     if notification_settings.get("slackEnabled"):
         webhook_url = notification_settings.get("slackWebhookUrl", "")
@@ -109,7 +109,7 @@ async def notify_cert_staged(
                     webhook_url=webhook_url,
                 )
             except Exception as e:
-                logger.error(f"Failed to send rotation Slack alert: {e}")
+                logger.exception(f"Failed to send rotation Slack alert: {e}")
 
 
 async def notify_cert_activated(
@@ -135,7 +135,7 @@ async def notify_cert_activated(
                     from_address=email_from,
                 )
             except Exception as e:
-                logger.error(f"Failed to send activation email: {e}")
+                logger.exception(f"Failed to send activation email: {e}")
 
     if notification_settings.get("teamsEnabled"):
         webhook_url = notification_settings.get("teamsWebhookUrl", "")
@@ -147,7 +147,7 @@ async def notify_cert_activated(
                     webhook_url=webhook_url,
                 )
             except Exception as e:
-                logger.error(f"Failed to send activation Teams alert: {e}")
+                logger.exception(f"Failed to send activation Teams alert: {e}")
 
 
 async def notify_rotation_failed(
@@ -174,7 +174,7 @@ async def notify_rotation_failed(
                     from_address=email_from,
                 )
             except Exception as e:
-                logger.error(f"Failed to send failure email: {e}")
+                logger.exception(f"Failed to send failure email: {e}")
 
     if notification_settings.get("teamsEnabled"):
         webhook_url = notification_settings.get("teamsWebhookUrl", "")
@@ -186,4 +186,4 @@ async def notify_rotation_failed(
                     webhook_url=webhook_url,
                 )
             except Exception as e:
-                logger.error(f"Failed to send failure Teams alert: {e}")
+                logger.exception(f"Failed to send failure Teams alert: {e}")

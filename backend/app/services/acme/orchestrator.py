@@ -247,7 +247,7 @@ class CertificateOrchestrator:
                     results.append(result)
                     logger.info(f"Renewed certificate '{cert_props.name}'")
             except Exception as e:
-                logger.error(f"Failed to renew '{cert_props.name}': {e}")
+                logger.exception(f"Failed to renew '{cert_props.name}': {e}")
                 results.append({
                     "certificate_name": cert_props.name,
                     "error": str(e),

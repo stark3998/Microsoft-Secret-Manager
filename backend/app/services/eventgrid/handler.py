@@ -70,7 +70,7 @@ async def process_events(event: dict) -> None:
             logger.info(f"Updated {object_type} {object_name} in vault {vault_name}: status={status}")
 
     except Exception as e:
-        logger.error(f"Failed to process event for {vault_name}/{object_name}: {e}")
+        logger.exception(f"Failed to process event for {vault_name}/{object_name}: {e}")
 
 
 async def _fetch_item(credential, vault_uri: str, object_type: str, object_name: str) -> dict | None:
@@ -142,5 +142,5 @@ async def _fetch_item(credential, vault_uri: str, object_type: str, object_name:
                 await client.close()
 
     except Exception as e:
-        logger.error(f"Failed to fetch {object_type} {object_name}: {e}")
+        logger.exception(f"Failed to fetch {object_type} {object_name}: {e}")
         return None

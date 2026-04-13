@@ -91,7 +91,7 @@ async def scan_app_registrations(
                 break
 
     except Exception as e:
-        logger.error(f"Error scanning app registrations: {e}")
+        logger.exception(f"Error scanning app registrations: {e}")
 
     logger.info(f"Scanned {app_count} app registrations, found {len(items)} credentials")
     return items, app_count
@@ -133,9 +133,15 @@ async def scan_enterprise_apps(
                     }
 
                 # Process key credentials (certificates)
+                # Track keyIds so we can skip password_credentials that are
+                # just the associated password for an uploaded certificate
+                cert_key_ids: set[str] = set()
                 for cred in (sp.key_credentials or []):
                     expires_on = cred.end_date_time
                     status, days = compute_expiration_status(expires_on, tiers)
+                    key_id_str = str(cred.key_id) if cred.key_id else ""
+                    if key_id_str:
+                        cert_key_ids.add(key_id_str)
 
                     item_id = f"entapp-cert-{sp_id}-{cred.key_id}"
                     items.append({
@@ -147,7 +153,7 @@ async def scan_enterprise_apps(
                         "appId": app_id,
                         "appDisplayName": display_name,
                         "accountEnabled": account_enabled,
-                        "credentialId": str(cred.key_id) if cred.key_id else "",
+                        "credentialId": key_id_str,
                         "certType": cred.usage or "",
                         "thumbprint": cred.custom_key_identifier.hex() if cred.custom_key_identifier else "",
                         "subject": cred.display_name or "",
@@ -159,8 +165,14 @@ async def scan_enterprise_apps(
                         "scanRunId": scan_run_id,
                     })
 
-                # Process password credentials
+                # Process password credentials — skip any whose keyId matches
+                # a key_credential (certificate), as those are just the cert's
+                # associated password, not standalone client secrets
                 for cred in (sp.password_credentials or []):
+                    key_id_str = str(cred.key_id) if cred.key_id else ""
+                    if key_id_str in cert_key_ids:
+                        continue
+
                     expires_on = cred.end_date_time
                     status, days = compute_expiration_status(expires_on, tiers)
 
@@ -174,7 +186,7 @@ async def scan_enterprise_apps(
                         "appId": app_id,
                         "appDisplayName": display_name,
                         "accountEnabled": account_enabled,
-                        "credentialId": str(cred.key_id) if cred.key_id else "",
+                        "credentialId": key_id_str,
                         "credentialDisplayName": cred.display_name or "",
                         "expiresOn": expires_on.isoformat() if expires_on else None,
                         "createdOn": cred.start_date_time.isoformat() if cred.start_date_time else None,
@@ -191,7 +203,7 @@ async def scan_enterprise_apps(
                 break
 
     except Exception as e:
-        logger.error(f"Error scanning enterprise apps: {e}")
+        logger.exception(f"Error scanning enterprise apps: {e}")
 
     logger.info(f"Scanned {app_count} enterprise apps, found {len(items)} credentials")
     return items, app_count, sp_metadata

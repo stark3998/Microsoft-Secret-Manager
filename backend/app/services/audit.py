@@ -39,6 +39,6 @@ async def record_audit_event(
         logger.info(f"Audit: {action} by {user.name or user.oid} on {resource_type}/{resource_id}")
     except Exception as e:
         # Audit logging should never break the main flow
-        logger.error(f"Failed to record audit event: {e}")
+        logger.exception(f"Failed to record audit event: {e}")
 
     return entry

@@ -266,6 +266,7 @@ async def disable_app(
         await upsert_item(container, record)
 
     except Exception as e:
+        logger.exception(f"Failed to disable service principal {sp_id}")
         action_doc["state"] = "failed"
         action_doc["failedAt"] = datetime.now(timezone.utc).isoformat()
         action_doc["failureReason"] = str(e)
@@ -325,6 +326,7 @@ async def enable_app(
             await upsert_item(container, action)
 
     except Exception as e:
+        logger.exception(f"Failed to enable service principal for {app_id}")
         raise HTTPException(status_code=500, detail=f"Failed to enable service principal: {e}")
 
     return {"status": "enabled", "appId": app_id, "servicePrincipalId": sp_id}

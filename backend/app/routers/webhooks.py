@@ -32,6 +32,6 @@ async def handle_eventgrid(request: Request):
             await process_events(event)
             processed += 1
         except Exception as e:
-            logger.error(f"Failed to process event: {e}")
+            logger.exception(f"Failed to process event: {e}")
 
     return {"status": "ok", "processed": processed}
